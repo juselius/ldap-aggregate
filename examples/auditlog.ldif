@@ -1,0 +1,148 @@
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=users,dc=source
+changetype: add
+ou: users
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d80be23a-be58-1033-9185-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.830030Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=groups,dc=source
+changetype: add
+ou: groups
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d80c1f7a-be58-1033-9186-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.831603Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=members,dc=source
+changetype: add
+ou: members
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d80c56a2-be58-1033-9187-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.833002Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=Robert Smith,ou=users,dc=source
+changetype: add
+objectClass: inetOrgPerson
+cn: Robert Smith
+cn: Robert J Smith
+cn: bob  smith
+sn: smith
+uid: rjsmith
+userPassword:: ckpzbWl0SA==
+carLicense: HISCAR 123
+homePhone: 555-111-2222
+mail: r.smith@example.com
+mail: rsmith@example.com
+mail: bob.smith@example.com
+description: swell guy
+ou: Human Resources
+structuralObjectClass: inetOrgPerson
+entryUUID: d80cbb9c-be58-1033-9188-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.835600Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# modify 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=Robert Smith,ou=users,dc=source
+changetype: modify
+delete: cn
+cn: Robert J Smith
+-
+replace: uid
+uid: robbie
+-
+replace: entryCSN
+entryCSN: 20140822150047.836687Z#000000#000#000000
+-
+replace: modifiersName
+modifiersName: cn=admin,dc=source
+-
+replace: modifyTimestamp
+modifyTimestamp: 20140822150047Z
+-
+# end modify 1408719647
+
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=robbie,ou=groups,dc=source
+changetype: add
+objectClass: posixGroup
+cn: robbie
+gidNumber: 123
+structuralObjectClass: posixGroup
+entryUUID: d80d1268-be58-1033-9189-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.837821Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# add 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=vip,ou=members,dc=source
+changetype: add
+objectClass: groupOfNames
+cn: vip
+member: cn=Robert Smith,ou=users,dc=source
+structuralObjectClass: groupOfNames
+entryUUID: d80d63da-be58-1033-918a-51640f02ea6d
+creatorsName: cn=admin,dc=source
+createTimestamp: 20140822150047Z
+entryCSN: 20140822150047.839907Z#000000#000#000000
+modifiersName: cn=admin,dc=source
+modifyTimestamp: 20140822150047Z
+# end add 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=Robert Smith,ou=users,dc=source
+changetype: delete
+# end delete 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=robbie,ou=groups,dc=source
+changetype: delete
+# end delete 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=users,dc=source
+changetype: delete
+# end delete 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=groups,dc=source
+changetype: delete
+# end delete 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: cn=vip,ou=members,dc=source
+changetype: delete
+# end delete 1408719647
+
+# delete 1408719647 dc=source cn=admin,dc=source IP=127.0.0.1:39234 conn=1016
+dn: ou=members,dc=source
+changetype: delete
+# end delete 1408719647
+

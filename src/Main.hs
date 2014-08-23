@@ -4,13 +4,31 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import Text.Printf
-import System.Environment
-import System.Random
-import System.Exit
-import Data.Array.Unboxed
-import Control.Monad.Reader
-{-import Data.Char-}
+import System.IO
+import Control.Concurrent
+{-import Text.Regex.PCRE-}
+import Settings
 
-main = print "hej"
+main = do
+    settings <- readSettings "ldaprelay.cfg"
+    print settings
+    inh <- openFile "input.txt" ReadMode
+    processData inh
+    hClose inh
+    putStrLn "done."
+
+waitForLine :: Handle -> IO String
+waitForLine inh = do
+    atEof <- hIsEOF inh
+    if atEof
+        then do
+            threadDelay 50000
+            waitForLine inh
+        else hGetLine inh
+
+processData :: Handle ->  IO ()
+processData inh = do
+    str <- waitForLine inh
+    putStrLn str
+    processData inh
 

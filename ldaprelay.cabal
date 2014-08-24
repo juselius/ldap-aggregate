@@ -49,7 +49,10 @@ executable ldaprealy.bin
   build-depends:
       base
     , mtl
+    , regex-posix
     , ConfigFile
+    , bytestring
+    , ldif
   hs-source-dirs: src
   ghc-options:
      -Wall -O2

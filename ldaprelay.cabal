@@ -32,10 +32,15 @@ flag test-properties
 library
   exposed-modules:
     Settings
+    LDIF.Preproc
+    LDIF.Parser
   build-depends:
       base
     , mtl
     , ConfigFile
+    , LDAP
+    , bytestring
+    , parsec
   hs-source-dirs: src
   ghc-options:
     -Wall -O2
@@ -53,6 +58,7 @@ executable ldaprealy.bin
     , ConfigFile
     , bytestring
     , ldif
+    , parsec
   hs-source-dirs: src
   ghc-options:
      -Wall -O2

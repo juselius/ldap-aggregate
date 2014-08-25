@@ -1,11 +1,15 @@
+{- This file is a simplified version of Text.LDIF.Preproc. -}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import System.IO
 import Control.Concurrent
-import Text.LDIF.Parser
+{-import Text.LDIF.Parser-}
+import LDIF.Preproc
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex.Posix
+import Text.ParserCombinators.Parsec
+
 import Settings
 
 main = do
@@ -24,29 +28,31 @@ waitForLine inh = do
             waitForLine inh
         else BS.hGetLine inh
 
-isEmptyLine :: BS.ByteString -> Bool
-isEmptyLine line =
-    line =~ BS.pack "^ *$" :: Bool
+matchEmptyLine = "^ *$" :: BS.ByteString
 
-isBeginAuditLog :: BS.ByteString -> Bool
-isBeginAuditLog line =
-    line =~ BS.pack "^# (add|modify|delete) ([0-9]+)" :: Bool
+matchBeginRecord = "^# (add|modify|delete) ([0-9]+)" :: BS.ByteString
 
-readAuditlogBlock :: Handle -> [BS.ByteString] -> IO BS.ByteString
+matchEndRecord = "^# end (add|modify|delete) ([0-9]+)" :: BS.ByteString
+
+type Match = (BS.ByteString, BS.ByteString, BS.ByteString, [BS.ByteString])
+
+readAuditlogBlock :: Handle -> [BS.ByteString] -> IO (Integer, BS.ByteString)
 readAuditlogBlock inh acc = do
     line <- waitForLine inh
-    if isEmptyLine line || isBeginAuditLog line
+    if line =~ matchEmptyLine
         then readAuditlogBlock inh acc
-        else if line =~
-            BS.pack "^# end (add|modify|delete) ([0-9]+)" :: Bool
-            then return $ BS.unlines acc
-            else readAuditlogBlock inh (acc ++ [line])
+        else let (_, _, _, match) = line =~ matchEndRecord :: Match in
+            if not $ null match
+                then return $ (read (BS.unpack $ match !! 1), BS.unlines acc)
+                else readAuditlogBlock inh (acc ++ [line])
 
 processData :: Handle ->  IO ()
 processData inh = do
     ldata <- readAuditlogBlock inh []
-    case parseLDIFStr defaulLDIFConf "relay" ldata of
-        Left err -> print "err"
-        Right ldif -> print ldif
+    print $ preproc (snd ldata)
+    putStrLn $ replicate 50 '-'
+    {-case parseLDIFStr defaulLDIFConf "relay" (snd ldata) of-}
+        {-Left err -> print "err"-}
+        {-Right ldif -> print ldif-}
     processData inh
 

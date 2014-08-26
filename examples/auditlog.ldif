@@ -74,6 +74,7 @@ cn: Robert J Smith
 -
 replace: uid
 uid: robbie
+uid: mrsmith
 -
 replace: entryCSN
 entryCSN: 20140822150047.836687Z#000000#000#000000

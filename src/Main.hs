@@ -4,8 +4,8 @@ module Main where
 
 import System.IO
 import Control.Concurrent
-{-import Text.LDIF.Parser-}
-import LDIF.Preproc
+{-import Text.LDIF.Preproc-}
+import LDIF.Simple
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex.Posix
 import Text.ParserCombinators.Parsec
@@ -49,10 +49,9 @@ readAuditlogBlock inh acc = do
 processData :: Handle ->  IO ()
 processData inh = do
     ldata <- readAuditlogBlock inh []
-    print $ preproc (snd ldata)
     putStrLn $ replicate 50 '-'
-    {-case parseLDIFStr defaulLDIFConf "relay" (snd ldata) of-}
-        {-Left err -> print "err"-}
-        {-Right ldif -> print ldif-}
+    case parseLDIFStr "relay" (snd ldata) of
+        Left err -> print err
+        Right ldif -> print ldif
     processData inh
 

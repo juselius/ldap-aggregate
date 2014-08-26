@@ -32,8 +32,7 @@ flag test-properties
 library
   exposed-modules:
     Settings
-    LDIF.Preproc
-    LDIF.Parser
+    LDIF.Simple
   build-depends:
       base
     , mtl

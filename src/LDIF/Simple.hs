@@ -6,7 +6,7 @@
 
     <jonas.juselius@uit.no> 2014
 -}
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module LDIF.Simple (
       parseLDIFStr
@@ -15,6 +15,7 @@ module LDIF.Simple (
 where
 import Prelude
 import Data.List
+import Control.Monad
 import Text.LDIF.Preproc
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 import LDAP.Search (LDAPEntry(..))
@@ -63,8 +64,7 @@ pLdif = do
             pFILL
             xs <- many1 digit
             pSEPs1
-            let ys = xs `seq` xs
-            ys `seq` return $ ys
+            xs `seq` return xs
         pSearchResult :: Parser ()
         pSearchResult = do
             string "search:"
@@ -81,8 +81,8 @@ pRec :: Parser [LDIF]
 pRec = do
     dn <- pDNSpec
     pSEP
-    x <- try (pChangeRec dn) <|> (pAttrValRec dn)
-    return $ reGroup x
+    attrs <- try (pChangeRec dn) <|> pAttrValRec dn
+    return $ collectAttrs attrs
     where
         pDNSpec :: Parser DN
         pDNSpec = do
@@ -91,7 +91,7 @@ pRec = do
         pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
-            attrVals `seq` return $ [LDIFRecord (LDAPEntry dn attrVals)]
+            attrVals `seq` return [LDIFRecord (LDAPEntry dn attrVals)]
         pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
             string "changetype:"
@@ -99,12 +99,13 @@ pRec = do
             try (pChangeAdd dn)
                 <|> try (pChangeDel dn)
                 <|> try (pChangeMod dn)
-                <|> (pChangeModDN dn)
-        reGroup :: [LDIF] -> [LDIF]
-        reGroup = map (\(LDIFRecord (LDAPEntry dn attrs)) ->
-            LDIFRecord (LDAPEntry dn (foop attrs)))
-        foop xs = map goop $ groupBy (\(a, _) (b, _) -> a == b) xs
-        goop xs = (fst (head xs), concat (map snd xs))
+                <|> pChangeModDN dn
+        collectAttrs :: [LDIF] -> [LDIF]
+        collectAttrs = map (\(LDIFRecord (LDAPEntry dn attrs)) ->
+            LDIFRecord (LDAPEntry dn (collect attrs)))
+            where
+                collect xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
+                gather xs = (fst (head xs), concatMap snd xs)
 
 pChangeAdd :: DN -> Parser [LDIF]
 pChangeAdd dn = do
@@ -159,7 +160,7 @@ pModSpec = do
    att <- pSafeString
    pSEP
    avals <- sepEndBy pAttrValSpec pSEP
-   let vals = concat $ map snd avals
+   let vals = concatMap snd avals
    return $ mkMod modType' att vals
 
 mkMod :: String -> Attribute -> [Value] -> LDAPMod
@@ -202,19 +203,17 @@ pSafeString = do
 pSafeString' :: Parser String
 pSafeString' = do
     r <- many (noneOf "\n")
-    let ys = r `seq` r
-    ys `seq` return ys
+    r `seq` return r
 
 pFILL :: Parser ()
-pFILL = skipMany (oneOf [' ', '\t'])
+pFILL = skipMany (oneOf " \t")
 
 pSEP :: Parser ()
-pSEP = newline >> return ()
+pSEP = void newline
 
 pSEPs :: Parser ()
-pSEPs = many pSEP >> return ()
+pSEPs = void (many pSEP)
 
 pSEPs1 :: Parser ()
-pSEPs1 = many1 pSEP >> return ()
-
+pSEPs1 = void (many1 pSEP)
 

@@ -1,0 +1,52 @@
+dn: uid=marve,ou=users,dc=source
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: marve
+cn: Marve Fleksnes
+gidNumber: 42
+givenName: Marve
+uidNumber: 42
+sn: Fleksnes
+homeDirectory: /home/marve
+loginShell: /bin/zsh
+mail: marve@fleksnes.no
+
+dn: cn=marve,ou=groups,dc=source
+objectClass: top
+objectClass: posixGroup
+cn: marve
+gidNumber: 42
+
+dn: uid=felgen,ou=users,dc=source
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: felgen
+cn: Reodor Felgen
+gidNumber: 43
+givenName: Reodor
+uidNumber: 43
+sn: Felgen
+homeDirectory: /home/felgen
+loginShell: /bin/bash
+mail: marve@felgen.no
+
+dn: cn=felgen,ou=groups,dc=source
+objectClass: top
+objectClass: posixGroup
+cn: felgen
+gidNumber: 43
+
+dn: cn=vip,ou=members,dc=source
+objectClass: groupOfNames
+objectClass: top
+cn: vip
+member: uid=marve,ou=users,dc=source
+member: uid=felgen,ou=users,dc=source

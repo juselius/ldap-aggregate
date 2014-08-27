@@ -1,0 +1,16 @@
+###
+###  Target DIT
+###
+
+dn: dc=target
+objectClass: dcObject
+objectClass: organization
+dc: target
+o: Example Corporation
+description: The Target Corporation
+
+dn: cn=admin,dc=target
+objectClass: organizationalRole
+cn: admin
+description: Target Directory Manager
+

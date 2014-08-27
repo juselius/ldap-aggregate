@@ -1,0 +1,18 @@
+##
+## Source tree
+##
+dn: ou=users,dc=source
+changetype: add
+ou: users
+objectclass: organizationalunit
+
+dn: ou=groups,dc=source
+changetype: add
+ou: groups
+objectclass: organizationalunit
+
+dn: ou=members,dc=source
+changetype: add
+ou: members
+objectclass: organizationalunit
+

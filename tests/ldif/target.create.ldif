@@ -1,0 +1,28 @@
+###
+###  Target tree
+###
+dn: ou=users,dc=target
+changetype: add
+ou: users
+objectclass: organizationalunit
+
+dn: ou=groups,dc=target
+changetype: add
+ou: groups
+objectclass: organizationalunit
+
+dn: ou=source,ou=users,dc=target
+changetype: add
+ou: source
+objectclass: organizationalunit
+
+dn: ou=source,ou=groups,dc=target
+changetype: add
+ou: source
+objectclass: organizationalunit
+
+dn: ou=members,dc=target
+changetype: add
+ou: members
+objectclass: organizationalunit
+

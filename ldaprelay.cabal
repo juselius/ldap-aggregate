@@ -38,6 +38,7 @@ library
     , mtl
     , ConfigFile
     , LDAP
+    , ldif
     , bytestring
     , parsec
   hs-source-dirs: src

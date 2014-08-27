@@ -10,15 +10,19 @@
 
 module LDIF.Simple (
       parseLDIFStr
+    , LDIF(..)
 )
 where
 import Prelude
+import Data.List
 import Text.LDIF.Preproc
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 import LDAP.Search (LDAPEntry(..))
 import Text.Parsec as PR
 import Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
+
+import Debug.Trace
 
 data LDIF = LDIFRecord {
           entry :: LDAPEntry
@@ -77,7 +81,8 @@ pRec :: Parser [LDIF]
 pRec = do
     dn <- pDNSpec
     pSEP
-    try (pChangeRec dn) <|> (pAttrValRec dn)
+    x <- try (pChangeRec dn) <|> (pAttrValRec dn)
+    return $ reGroup x
     where
         pDNSpec :: Parser DN
         pDNSpec = do
@@ -95,6 +100,11 @@ pRec = do
                 <|> try (pChangeDel dn)
                 <|> try (pChangeMod dn)
                 <|> (pChangeModDN dn)
+        reGroup :: [LDIF] -> [LDIF]
+        reGroup = map (\(LDIFRecord (LDAPEntry dn attrs)) ->
+            LDIFRecord (LDAPEntry dn (foop attrs)))
+        foop xs = map goop $ groupBy (\(a, _) (b, _) -> a == b) xs
+        goop xs = (fst (head xs), concat (map snd xs))
 
 pChangeAdd :: DN -> Parser [LDIF]
 pChangeAdd dn = do
@@ -168,7 +178,7 @@ pModType = try (string "add:")
 pAttributeType :: Parser Attribute
 pAttributeType = do
     pFILL
-    c <- noneOf "-"
+    c <- noneOf "-\n"
     xs <- many (noneOf " :\n")
     char ':'
     let ys = c:xs

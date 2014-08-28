@@ -1,0 +1,28 @@
+dn: uid=roger,ou=users,dc=target
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: roger
+cn: Roger Jurtappen
+gidNumber: 123
+givenName: Roger
+uidNumber: 123
+sn: Jurtappen
+homeDirectory: /home/roger
+loginShell: /bin/zsh
+mail: roger@jurtappen.no
+
+dn: cn=roger,ou=groups,dc=target
+objectClass: top
+objectClass: posixGroup
+cn: roger
+gidNumber: 123
+
+dn: cn=vip,ou=members,dc=target
+objectClass: groupOfNames
+objectClass: top
+cn: vip
+member: uid=roger,ou=users,dc=target

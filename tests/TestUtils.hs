@@ -27,7 +27,7 @@ printDIT ldap tree = do
 
 bindDIT :: String -> IO LDAP
 bindDIT tree = do
-    --pw <- getBindPw
+    --pw <- askBindPw
     ldap <- ldapInitialize "ldap://localhost:389"
     ldapSimpleBind ldap ("cn=admin," ++ tree) "secret"
     return ldap
@@ -36,11 +36,13 @@ getDIT :: LDAP -> String -> IO [LDAPEntry]
 getDIT ldap tree =
     ldapSearch ldap (Just tree) LdapScopeSubtree Nothing LDAPAllUserAttrs False
 
-getBindPw :: IO String
-getBindPw = do
+askBindPw :: IO String
+askBindPw = do
     putStr "bindpw: "
     hFlush stdout
+    hSetEcho stdout False
     pw <- getLine
+    hSetEcho stdout True
     putStrLn ""
     return pw
 

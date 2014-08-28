@@ -8,13 +8,15 @@ module TestUtils (
     , populateSource
     , populateTarget
     , ldata2LdapMod
+    , modifyTreeFromLdif
 ) where
 
 import System.IO
 import Text.Regex.Posix
-import qualified Data.ByteString.Char8 as BS
+import Data.Either
 import LDAP
 import LDIF.Simple
+import qualified Data.ByteString.Char8 as BS
 
 printDIT :: LDAP -> String -> IO ()
 printDIT ldap tree = do
@@ -61,12 +63,6 @@ clearTree ldap tree = do
             | ledn e =~ "^cn=admin,dc=[^=]*$" :: Bool = False
             | otherwise = True
 
-    --ldapModify ldap "cn=admin,dc=source" [chAdminDesc "Head Foo"]
-    --ldif' <- search Nothing LDAPAllUserAttrs False
-    --print ldif'
-    --where
-        --chAdminDesc x = LDAPMod LdapModReplace "description" [x, x ++ "bar"]
-
 populateSource :: LDAP -> IO ()
 populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode BS.hGetContents
@@ -85,21 +81,18 @@ populateTarget ldap = do
     commit ltree
     commit lpops
 
-    --ldapModify ldap "cn=admin,dc=source" [chAdminDesc "Head Foo"]
-    --ldif' <- search Nothing LDAPAllUserAttrs False
-    --print ldif'
-    --where
-        --chAdminDesc x = LDAPMod LdapModReplace "description" [x, x ++ "bar"]
+modifyTreeFromLdif :: LDAP -> BS.ByteString -> IO ()
+modifyTreeFromLdif ldap ldif =
+    mapM_ (\(LDIFMod dn attrs) ->
+            ldapModify ldap dn [attrs]) $
+                either (error . show) (id) (parseLDIFStr "" ldif)
 
 ldata2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
 ldata2LdapMod str =
-    case ldif of
-        Right l -> map (\(LDAPEntry dn attrs) ->
-            (dn, list2ldm LdapModAdd attrs)) l
-        Left e -> error e
+        map (\(LDAPEntry dn attrs) ->
+            (dn, list2ldm LdapModAdd attrs)) ldif
     where
         ldif = extractEntries $ parseLDIFStr "" str
-        extractEntries x = case x of
-            Right l -> Right $ map (\z -> ldapEntry z) l
-            Left err -> Left $ show err
+        extractEntries x =
+            either (error . show) (map (\z -> ldapEntry z)) x
 

@@ -67,9 +67,9 @@ executable ldaprealy.bin
     -funbox-strict-fields
     -fmax-simplifier-iterations=10
 
-test-suite properties
+test-suite example
   type: exitcode-stdio-1.0
-  main-is: properties.hs
+  main-is: example.hs
   ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
   hs-source-dirs: tests
   if !flag(test-properties)

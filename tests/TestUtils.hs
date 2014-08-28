@@ -13,7 +13,6 @@ module TestUtils (
 
 import System.IO
 import Text.Regex.Posix
-import Data.Either
 import LDAP
 import LDIF.Simple
 import qualified Data.ByteString.Char8 as BS

@@ -1,6 +1,12 @@
 ###
 ###  Target tree
 ###
+dn: cn=auditlog,dc=target
+objectClass: organizationalRole
+cn: autditlog
+description: Auditlog timestamp
+destinationIndicator: 0
+
 dn: ou=users,dc=target
 changetype: add
 ou: users

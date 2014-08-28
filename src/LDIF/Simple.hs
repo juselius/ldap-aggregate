@@ -11,8 +11,10 @@
 module LDIF.Simple (
       parseLDIFStr
     , LDIF(..)
-)
-where
+    , LDAPEntry'(..)
+    , LDAPMod'(..)
+) where
+
 import Prelude
 import Data.List
 import Control.Monad
@@ -25,13 +27,35 @@ import qualified Data.ByteString.Char8 as BC
 
 import Debug.Trace
 
-data LDIF = LDIFRecord {
-          entry :: LDAPEntry
+data LDIF = LDIFEntry {
+          ldapOp :: Maybe LDAPModOp
+        , ldapEntry :: LDAPEntry
     }
     | LDIFMod {
           modDN :: String
-        , mod :: LDAPMod
-    } deriving (Show)
+        , modEntry :: LDAPMod
+    }
+
+newtype LDAPEntry' = LDAPEntry' LDAPEntry
+newtype LDAPMod' = LDAPMod' LDAPMod
+
+instance Show LDIF where
+    show (LDIFEntry op e) = "opcode: "
+        ++ show op ++ "\n"
+        ++ show e
+    show (LDIFMod dn e) = "dn: "
+        ++ show dn ++ "\n"
+        ++ show e
+
+instance Show LDAPEntry' where
+    show (LDAPEntry' (LDAPEntry dn attrs)) = "LDAPEntry -> "
+        ++ "dn: " ++ dn ++ "\n"
+        ++ (init . foldl (\s a -> s ++ "    " ++ show a ++ "\n") "" $ attrs)
+
+instance Show LDAPMod' where
+    show (LDAPMod' (LDAPMod op attr vals)) = "LDAPMod -> "
+        ++ "opcode: " ++ show op ++ "\n"
+        ++ "    " ++ attr ++ ":" ++ show vals
 
 type DN = String
 
@@ -91,7 +115,7 @@ pRec = do
         pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
-            attrVals `seq` return [LDIFRecord (LDAPEntry dn attrVals)]
+            attrVals `seq` return [LDIFEntry Nothing (LDAPEntry dn attrVals)]
         pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
             string "changetype:"
@@ -101,10 +125,12 @@ pRec = do
                 <|> try (pChangeMod dn)
                 <|> pChangeModDN dn
         collectAttrs :: [LDIF] -> [LDIF]
-        collectAttrs = map (\(LDIFRecord (LDAPEntry dn attrs)) ->
-            LDIFRecord (LDAPEntry dn (collect attrs)))
+        collectAttrs = map collect
             where
-                collect xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
+                collect (LDIFEntry op (LDAPEntry dn attrs)) =
+                    LDIFEntry op (LDAPEntry dn (reGroup attrs))
+                collect x@(LDIFMod _ _) = x
+                reGroup xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
                 gather xs = (fst (head xs), concatMap snd xs)
 
 pChangeAdd :: DN -> Parser [LDIF]
@@ -112,7 +138,7 @@ pChangeAdd dn = do
     string "add"
     pSEP
     vals <- sepEndBy1 pAttrValSpec pSEP
-    return $ map (\(a, v) -> LDIFMod dn $ LDAPMod LdapModAdd a v) vals
+    return [LDIFEntry (Just LdapModAdd) $ LDAPEntry dn vals]
 
 pChangeDel :: DN -> Parser [LDIF]
 pChangeDel dn = do

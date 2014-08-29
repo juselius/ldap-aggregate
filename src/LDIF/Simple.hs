@@ -25,7 +25,7 @@ import Text.Parsec as PR
 import Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
 
-import Debug.Trace
+--import Debug.Trace
 
 data LDIF = LDIFEntry {
           ldapOp :: Maybe LDAPModOp
@@ -76,30 +76,29 @@ parseLDIFStr name xs = case eldif of
 pLdif :: Parser [LDIF]
 pLdif = do
     pSEPs
-    optionMaybe pVersionSpec
+    void $ optionMaybe pVersionSpec
     recs <- sepEndBy pRec pSEPs1
-    optionMaybe pSearchResult
+    void $ optionMaybe pSearchResult
     eof
     return $ concat recs
     where
         pVersionSpec :: Parser String
         pVersionSpec = do
-            string "version:"
+            void $ string "version:"
             pFILL
             xs <- many1 digit
             pSEPs1
             xs `seq` return xs
         pSearchResult :: Parser ()
         pSearchResult = do
-            string "search:"
+            void $ string "search:"
             pFILL
-            many1 digit
+            void $ many1 digit
             pSEP
-            string "result:"
+            void $ string "result:"
             pFILL
-            pSafeString
+            void $ pSafeString
             pSEPs
-            return ()
 
 pRec :: Parser [LDIF]
 pRec = do
@@ -110,7 +109,7 @@ pRec = do
     where
         pDNSpec :: Parser DN
         pDNSpec = do
-            string "dn:"
+            void $ string "dn:"
             pDN
         pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
@@ -118,7 +117,7 @@ pRec = do
             attrVals `seq` return [LDIFEntry Nothing (LDAPEntry dn attrVals)]
         pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
-            string "changetype:"
+            void $ string "changetype:"
             pFILL
             try (pChangeAdd dn)
                 <|> try (pChangeDel dn)
@@ -135,14 +134,14 @@ pRec = do
 
 pChangeAdd :: DN -> Parser [LDIF]
 pChangeAdd dn = do
-    string "add"
+    void $ string "add"
     pSEP
     vals <- sepEndBy1 pAttrValSpec pSEP
     return [LDIFEntry (Just LdapModAdd) $ LDAPEntry dn vals]
 
 pChangeDel :: DN -> Parser [LDIF]
 pChangeDel dn = do
-    string "delete"
+    void $ string "delete"
     pSEP
     vals <- sepEndBy pAttrValSpec pSEP
     return $ case vals of
@@ -151,22 +150,22 @@ pChangeDel dn = do
 
 pChangeMod :: DN -> Parser [LDIF]
 pChangeMod dn = do
-    string "modify"
+    void $ string "modify"
     pSEP
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
     return $ map (LDIFMod dn) mods
 
 pChangeModDN :: DN -> Parser [LDIF]
 pChangeModDN dn = do
-    string "modrdn"
+    void $ string "modrdn"
     pSEP
-    string "newrdn:"
+    void $ string "newrdn:"
     pFILL
-    pRDN
+    void $ pRDN
     pSEP
-    string "deleteoldrdn:"
+    void $ string "deleteoldrdn:"
     pFILL
-    oneOf "01"
+    void $ oneOf "01"
     pSEP
     return [LDIFMod dn $ LDAPMod LdapModDelete dn []]
 
@@ -207,7 +206,7 @@ pAttributeType = do
     pFILL
     c <- noneOf "-\n"
     xs <- many (noneOf " :\n")
-    char ':'
+    _ <- char ':'
     let ys = c:xs
     ys `seq` return ys
 

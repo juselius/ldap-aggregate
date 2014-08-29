@@ -18,7 +18,8 @@ import LDIF.Simple
 import qualified Data.ByteString.Char8 as BS
 import qualified Text.RegexPR as PR
 
-import LDAPRelay.Utils
+import LDAPRelay.Rewrite
+import LDAPRelay.DirectoryTree
 
 clearTree' :: String -> IO ()
 clearTree' tree = do

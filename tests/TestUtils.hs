@@ -1,14 +1,14 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
+-- {-# LANGUAGE OverloadedStrings #-}
+-- {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-missing-signatures #-}
+
 module TestUtils (
-      bindDIT
-    , printDIT
-    , getDIT
-    , getBindPw
-    , clearTree
+      clearTree
     , clearTree'
     , populateSource
     , populateTarget
-    , ldata2LdapMod
-    , modifyTreeFromLdif
 ) where
 
 import System.IO
@@ -16,35 +16,9 @@ import Text.Regex.Posix
 import LDAP
 import LDIF.Simple
 import qualified Data.ByteString.Char8 as BS
+import qualified Text.RegexPR as PR
 
-printDIT :: LDAP -> String -> IO ()
-printDIT ldap tree = do
-    ldif <- getDIT ldap tree
-    putStrLn . init . foldl prettify  "" $ ldif
-    putStrLn "--"
-    where
-        prettify s e@(LDAPEntry _ _) = show (LDAPEntry' e) ++ "\n" ++ s
-
-bindDIT :: String -> IO LDAP
-bindDIT tree = do
-    --pw <- askBindPw
-    ldap <- ldapInitialize "ldap://localhost:389"
-    ldapSimpleBind ldap ("cn=admin," ++ tree) "secret"
-    return ldap
-
-getDIT :: LDAP -> String -> IO [LDAPEntry]
-getDIT ldap tree =
-    ldapSearch ldap (Just tree) LdapScopeSubtree Nothing LDAPAllUserAttrs False
-
-askBindPw :: IO String
-askBindPw = do
-    putStr "bindpw: "
-    hFlush stdout
-    hSetEcho stdout False
-    pw <- getLine
-    hSetEcho stdout True
-    putStrLn ""
-    return pw
+import LDAPRelay.Utils
 
 clearTree' :: String -> IO ()
 clearTree' tree = do
@@ -60,8 +34,8 @@ clearTree ldap tree = do
     mapM_ (\dn-> ldapDelete ldap (ledn dn)) ldif'
     where
         delEntry e
-            | ledn e =~ "^dc=(source|target)$" :: Bool = False
-            | ledn e =~ "^cn=admin,dc=[^=]*$" :: Bool = False
+            | ledn e =~ ("^dc=(source|target)$" :: String) :: Bool = False
+            | ledn e =~ ("^cn=admin,dc=[^=]*$" :: String) :: Bool = False
             | otherwise = True
 
 populateSource :: LDAP -> IO ()
@@ -82,18 +56,19 @@ populateTarget ldap = do
     commit ltree
     commit lpops
 
-modifyTreeFromLdif :: LDAP -> BS.ByteString -> IO ()
-modifyTreeFromLdif ldap ldif =
-    mapM_ (\(LDIFMod dn attrs) ->
-            ldapModify ldap dn [attrs]) $
-                either (error . show) (id) (parseLDIFStr "" ldif)
+--
+-- Test data below
+--
 
-ldata2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
-ldata2LdapMod str =
-        map (\(LDAPEntry dn attrs) ->
-            (dn, list2ldm LdapModAdd attrs)) ldif
-    where
-        ldif = extractEntries $ parseLDIFStr "" str
-        extractEntries x =
-            either (error . show) (map (\z -> ldapEntry z)) x
+testDN = "uid=foobar,ou=groups,dc=source"
+testRelocPatterns = [
+      ("dc=source", "dc=target")
+    , ("dc=foo", "dc=bar")
+    ]
+testLDIF = LDIFEntry Nothing $ LDAPEntry testDN [
+      ("uid", ["foo"])
+    , ("member", ["foo", "bar"])
+    ]
+
+
 

@@ -11,57 +11,42 @@
 module LDIF.Simple (
       parseLDIFStr
     , LDIF(..)
-    , LDAPEntry'(..)
-    , LDAPMod'(..)
+    , LDIFEntry(..)
 ) where
 
 import Prelude
 import Data.List
 import Control.Monad
 import Text.LDIF.Preproc
-import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
-import LDAP.Search (LDAPEntry(..))
+import LDAP.Modify (LDAPModOp(..))
 import Text.Parsec as PR
 import Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
 
 --import Debug.Trace
+type DN = String
+type Attribute = String
+type Value = String
 
-data LDIF = LDIFEntry {
-          ldapOp :: Maybe LDAPModOp
-        , ldapEntry :: LDAPEntry
-    }
-    | LDIFMod {
-          modDN :: String
-        , modEntry :: LDAPMod
+type AttrSpec = (Attribute, [Value])
+
+data LDIFEntry = LDIFEntry {
+          ldifOp    :: LDAPModOp
+        , ldifDN    :: DN
+        , ldifAttrs :: [AttrSpec]
     }
 
-newtype LDAPEntry' = LDAPEntry' LDAPEntry
-newtype LDAPMod' = LDAPMod' LDAPMod
+data LDIF = LDIF LDIFEntry | LDIFMod LDIFEntry
 
 instance Show LDIF where
-    show (LDIFEntry op e) = "opcode: "
-        ++ show op ++ "\n"
-        ++ show e
-    show (LDIFMod dn e) = "dn: "
-        ++ show dn ++ "\n"
-        ++ show e
+    show (LDIF x) = "LDIFEntry -> " ++ show x
+    show (LDIFMod x) = "LDIFMod -> " ++ show x
 
-instance Show LDAPEntry' where
-    show (LDAPEntry' (LDAPEntry dn attrs)) = "LDAPEntry -> "
-        ++ "dn: " ++ dn ++ "\n"
-        ++ (init . foldl (\s a -> s ++ "    " ++ show a ++ "\n") "" $ attrs)
-
-instance Show LDAPMod' where
-    show (LDAPMod' (LDAPMod op attr vals)) = "LDAPMod -> "
-        ++ "opcode: " ++ show op ++ "\n"
-        ++ "    " ++ attr ++ ":" ++ show vals
-
-type DN = String
-
-type Attribute = String
-
-type Value = String
+instance Show LDIFEntry where
+    show (LDIFEntry op dn attrs) = "dn: " ++ dn ++ "\n"
+        ++ "oper: " ++ show op ++ "\n"
+        ++ (init . foldl (\s a ->
+            s ++ "    " ++ show a ++ "\n") "" $ attrs)
 
 -- | Parse LDIF content
 parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
@@ -88,7 +73,7 @@ pLdif = do
             pFILL
             xs <- many1 digit
             pSEPs1
-            xs `seq` return xs
+            return xs
         pSearchResult :: Parser ()
         pSearchResult = do
             void $ string "search:"
@@ -97,7 +82,7 @@ pLdif = do
             pSEP
             void $ string "result:"
             pFILL
-            void $ pSafeString
+            void pSafeString
             pSEPs
 
 pRec :: Parser [LDIF]
@@ -114,7 +99,7 @@ pRec = do
         pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
-            attrVals `seq` return [LDIFEntry Nothing (LDAPEntry dn attrVals)]
+            attrVals `seq` return [LDIF $ LDIFEntry LdapModAdd dn attrVals]
         pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
             void $ string "changetype:"
@@ -126,9 +111,10 @@ pRec = do
         collectAttrs :: [LDIF] -> [LDIF]
         collectAttrs = map collect
             where
-                collect (LDIFEntry op (LDAPEntry dn attrs)) =
-                    LDIFEntry op (LDAPEntry dn (reGroup attrs))
-                collect x@(LDIFMod _ _) = x
+                collect (LDIF l@(LDIFEntry _ _ attrs))
+                    = LDIF l {ldifAttrs = reGroup attrs}
+                collect (LDIFMod l@(LDIFEntry _ _ attrs))
+                    = LDIFMod l {ldifAttrs = reGroup attrs}
                 reGroup xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
                 gather xs = (fst (head xs), concatMap snd xs)
 
@@ -136,24 +122,21 @@ pChangeAdd :: DN -> Parser [LDIF]
 pChangeAdd dn = do
     void $ string "add"
     pSEP
-    vals <- sepEndBy1 pAttrValSpec pSEP
-    return [LDIFEntry (Just LdapModAdd) $ LDAPEntry dn vals]
+    attrs <- sepEndBy1 pAttrValSpec pSEP
+    return [LDIF $ LDIFEntry LdapModAdd dn attrs]
 
 pChangeDel :: DN -> Parser [LDIF]
 pChangeDel dn = do
     void $ string "delete"
     pSEP
-    vals <- sepEndBy pAttrValSpec pSEP
-    return $ case vals of
-        [] -> [LDIFMod dn $ LDAPMod LdapModDelete "" []] -- delete entire record
-        _ -> map (\(a, v) -> LDIFMod dn $ LDAPMod LdapModDelete a v) vals
+    attrs <- sepEndBy pAttrValSpec pSEP
+    return [LDIF $ LDIFEntry LdapModAdd dn attrs]
 
 pChangeMod :: DN -> Parser [LDIF]
 pChangeMod dn = do
     void $ string "modify"
     pSEP
-    mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
-    return $ map (LDIFMod dn) mods
+    sepEndBy1 (pModSpec dn) (char '-' >> pSEP)
 
 pChangeModDN :: DN -> Parser [LDIF]
 pChangeModDN dn = do
@@ -161,13 +144,13 @@ pChangeModDN dn = do
     pSEP
     void $ string "newrdn:"
     pFILL
-    void $ pRDN
+    void pRDN
     pSEP
     void $ string "deleteoldrdn:"
     pFILL
     void $ oneOf "01"
     pSEP
-    return [LDIFMod dn $ LDAPMod LdapModDelete dn []]
+    return [LDIF $ LDIFEntry  LdapModDelete dn []]
 
 pRDN :: Parser String
 pRDN = pSafeString
@@ -175,25 +158,23 @@ pRDN = pSafeString
 pDN :: Parser DN
 pDN = do
     pFILL
-    dn <- pSafeString'
-    dn `seq` return dn
+    pSafeString'
 
-pModSpec :: Parser LDAPMod
-pModSpec = do
-   modType' <- pModType
+pModSpec :: String -> Parser LDIF
+pModSpec dn = do
+   modStr <- pModType
    pFILL
-   att <- pSafeString
+   void pSafeString  -- attribute type to modify (ignore)
    pSEP
-   avals <- sepEndBy pAttrValSpec pSEP
-   let vals = concatMap snd avals
-   return $ mkMod modType' att vals
+   attrs <- sepEndBy pAttrValSpec pSEP
+   return $ mkMod modStr dn attrs
 
-mkMod :: String -> Attribute -> [Value] -> LDAPMod
-mkMod modType' att vals
-    | modType' == "add:" = LDAPMod LdapModAdd att vals
-    | modType' == "delete:" = LDAPMod LdapModDelete att vals
-    | modType' == "replace:" = LDAPMod LdapModReplace att vals
-    | otherwise = error $ "unexpected mod:" ++ modType'
+mkMod :: String -> String -> [AttrSpec] -> LDIF
+mkMod modStr dn attrs
+    | modStr == "add:" = LDIFMod $ LDIFEntry LdapModAdd dn attrs
+    | modStr == "delete:" = LDIFMod $ LDIFEntry LdapModDelete dn attrs
+    | modStr == "replace:" = LDIFMod $ LDIFEntry LdapModReplace dn attrs
+    | otherwise = error $ "unexpected mod:" ++ modStr
     -- error can not be reached because pModType
 
 pModType :: Parser String
@@ -208,7 +189,7 @@ pAttributeType = do
     xs <- many (noneOf " :\n")
     _ <- char ':'
     let ys = c:xs
-    ys `seq` return ys
+    return ys
 
 pAttrValSpec :: Parser (Attribute, [Value])
 pAttrValSpec = do
@@ -221,14 +202,11 @@ pSafeString :: Parser String
 pSafeString = do
     c <- noneOf "\n :<"
     r <- many (noneOf "\n")
-    let xs = r `seq` c:r
-    let ys = xs `seq` xs
-    ys `seq` return ys
+    let xs = c:r
+    return xs
 
 pSafeString' :: Parser String
-pSafeString' = do
-    r <- many (noneOf "\n")
-    r `seq` return r
+pSafeString' = many (noneOf "\n")
 
 pFILL :: Parser ()
 pFILL = skipMany (oneOf " \t")

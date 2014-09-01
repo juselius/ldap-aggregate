@@ -4,6 +4,7 @@ module LDAPRelay.DirectoryTree (
     , getDIT
     , askBindPw
     , modifyTreeFromLdif
+    , modifyTreeFromLdifStr
     , LDAPEntry(..)
     , LDAPMod(..)
     ) where
@@ -43,15 +44,19 @@ askBindPw = do
     putStrLn ""
     return pw
 
-modifyTreeFromLdif :: LDAP -> BS.ByteString -> IO ()
+modifyTreeFromLdifStr :: LDAP -> BS.ByteString -> IO ()
+modifyTreeFromLdifStr ldap ldif =
+    modifyTreeFromLdif ldap $ either (error . show) id (parseLDIFStr "" ldif)
+
+modifyTreeFromLdif :: LDAP -> [LDIF] -> IO ()
 modifyTreeFromLdif ldap ldif =
-    mapM_ doMod $ either (error . show) id (parseLDIFStr "" ldif)
+    mapM_ runMod ldif
     where
-        doMod (LDIF (LDIFEntry LdapModAdd dn attrs)) =
+        runMod (LDIF (LDIFEntry LdapModAdd dn attrs)) =
             ldapAdd ldap dn (list2ldm LdapModAdd attrs)
-        doMod (LDIF (LDIFEntry LdapModDelete dn _)) =
+        runMod (LDIF (LDIFEntry LdapModDelete dn _)) =
             ldapDelete ldap dn
-        doMod (LDIF (LDIFEntry op dn attrs)) =
+        runMod (LDIF (LDIFEntry op dn attrs)) =
             ldapModify ldap dn (list2ldm op attrs)
-        doMod (LDIFMod (LDIFEntry op dn attrs)) =
+        runMod (LDIFMod (LDIFEntry op dn attrs)) =
             ldapModify ldap dn (list2ldm op attrs)

@@ -6,11 +6,13 @@ module LDAPRelay.Rewrite (
       rewriteDN
     , rewriteAttrs
     , filterAttrs
+    , filterEntry
     , ldapRec2LdapAdd
 ) where
 
 import LDAP
 import LDIF.Simple
+import Text.Regex.Posix
 import qualified Data.ByteString.Char8 as BS
 import qualified Text.RegexPR as PR
 
@@ -49,10 +51,14 @@ rewriteAttrs :: [(Attribute, FromTo)] -> LDIFEntry -> LDIFEntry
 rewriteAttrs afts  x@(LDIFEntry _ _ attrs) =
     x { ldifAttrs = map (rewriteAttr afts) attrs }
 
-filterAttrs :: [Attribute] -> LDIFEntry -> LDIFEntry
-filterAttrs attrl ldif@(LDIFEntry _ _ attrs) = ldif {
-    ldifAttrs = filter (flip elem attrl . fst) attrs
-    }
+filterAttrs :: [Attribute] -> [AttrSpec] -> [AttrSpec]
+filterAttrs attrl = filter (not . flip elem attrl . fst)
+
+filterEntry :: (String, [Attribute]) -> LDIFEntry -> LDIFEntry
+filterEntry (dnFilter, attrl) ldif@(LDIFEntry _ dn attrs) =
+    if dn =~ dnFilter
+        then ldif { ldifAttrs = filterAttrs attrl attrs }
+        else ldif
 
 regexSub :: FromTo -> Value -> Value
 regexSub (src, dst) = PR.subRegexPR src dst

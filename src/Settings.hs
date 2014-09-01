@@ -5,7 +5,7 @@ module Settings (
     ) where
 
 import System.Exit
-import Data.ConfigFile
+import Data.ConfigFile.Monadic
 import Control.Monad.Error
 
 data Settings = Settings {
@@ -27,7 +27,7 @@ readSettings :: String -> IO Settings
 readSettings f = do
     s <- runErrorT $ do
         dp <- defaultCP
-        cp <- join . liftIO $ readfile dp f
+        cp <- join . liftIO $ readfile f dp
         src <- readDIT cp "source"
         dst <- readDIT cp "dest"
         rdn <- get cp "rewrite" "dn"
@@ -49,33 +49,30 @@ readSettings f = do
                 putStrLn $ " ---> " ++ show s'
                 exitFailure
 
--- use applicative style!
 readDIT :: ConfigParser -> String -> ErrorT CPError IO DITInfo
 readDIT cp sect = do
-    uri <- get cp sect "uri"
-    base <- get cp sect "base"
-    binddn <- get cp sect "binddn"
+    url <- get cp sect "uri"
+    bas <- get cp sect "base"
+    dn <- get cp sect "binddn"
     pw <- get cp sect "password"
-    return $ DITInfo uri base binddn pw
+    return $ DITInfo url bas dn pw
 
 defaultCP :: ErrorT CPError IO ConfigParser
-defaultCP = do
-    let cp = emptyCP
-    cp <- set cp "DEFAULT" "auditlog" "auditlog.ldif"
-    cp <- add_section cp "source"
-    cp <- set cp "source" "uri" "ldap://localhost:389"
-    cp <- set cp "source" "binddn" ""
-    cp <- set cp "source" "base" ""
-    cp <- set cp "source" "secret" ""
-    cp <- set cp "source" "binddn" ""
-    cp <- add_section cp "dest"
-    cp <- set cp "dest" "uri" "ldap://localhost:389"
-    cp <- set cp "dest" "binddn" ""
-    cp <- set cp "dest" "base" ""
-    cp <- set cp "dest" "secret" ""
-    cp <- set cp "dest" "binddn" ""
-    cp <- add_section cp "rewrite"
-    cp <- set cp "rewrite" "dn" "[]"
-    cp <- set cp "rewrite" "attr" "[]"
-    return cp
+defaultCP =
+    set "DEFAULT" "auditlog" "auditlog.ldif" emptyCP
+    >>= add_section "source"
+    >>= set "source" "uri" "ldap://localhost:389"
+    >>= set "source" "binddn" ""
+    >>= set "source" "base" ""
+    >>= set "source" "secret" ""
+    >>= set "source" "binddn" ""
+    >>= add_section "dest"
+    >>= set "dest" "uri" "ldap://localhost:389"
+    >>= set "dest" "binddn" ""
+    >>= set "dest" "base" ""
+    >>= set "dest" "secret" ""
+    >>= set "dest" "binddn" ""
+    >>= add_section "rewrite"
+    >>= set "rewrite" "dn" "[]"
+    >>= set "rewrite" "attr" "[]"
 

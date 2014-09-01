@@ -3,70 +3,60 @@
 --
 
 module LDAPRelay.Rewrite (
-      ldata2LdapMod
-    , rewriteDN
+      rewriteDN
     , rewriteAttrs
+    , filterAttrs
+    , ldapRec2LdapAdd
 ) where
 
 import LDAP
 import LDIF.Simple
-import Data.List
-import Data.Maybe
 import qualified Data.ByteString.Char8 as BS
 import qualified Text.RegexPR as PR
 
-type RegexFrom = String
-type RegexTo = String
-type AttrName = String
-type FromTo = (RegexFrom, RegexTo)
-type AttrFromTo = (AttrName, (RegexFrom, RegexTo))
-type AttrList = [AttrName]
+type RegexStr = String
+type FromTo = (RegexStr, RegexStr)
 
-ldata2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
-ldata2LdapMod str =
-        map (\(LDAPEntry dn attrs) ->
-            (dn, list2ldm LdapModAdd attrs)) ldif
+-- | Convert a LDIF string of LDAP search results to LDAPMod for add
+ldapRec2LdapAdd :: BS.ByteString -> [(String, [LDAPMod])]
+ldapRec2LdapAdd str =
+        map toMod ldif
     where
         ldif = extractEntries $ parseLDIFStr "" str
         extractEntries =
-            either (error . show) (map ldapEntry)
+            either (error . show) (map ldifEntry)
+        toMod (LDIFEntry op dn attrs) = (dn, list2ldm op attrs)
 
-rewriteDN :: [FromTo] -> LDIF -> Maybe LDIF
-rewriteDN fts x@(LDIFEntry _ y@(LDAPEntry dn _)) =
-    case substDN fts dn of
-        Just dn' -> Just $ x { ldapEntry = y {ledn = dn'} }
-        Nothing -> Nothing
-rewriteDN fts x@(LDIFMod dn _) =
-    case substDN fts dn of
-        Just dn' -> Just $ x { modDN = dn' }
-        Nothing -> Nothing
+rewriteDN :: [FromTo] -> LDIFEntry -> LDIFEntry
+rewriteDN fts l@(LDIFEntry _ dn _) = l { ldifDN = substDN fts dn }
 
-substDN :: [FromTo] -> String -> Maybe String
-substDN fts dn = case getFirstMatch of
-        [str] -> Just str
-        _ -> Nothing
+substDN :: [FromTo] -> String -> String
+substDN fts dn =
+    case getFirstMatch of
+        dn':_ -> dn'
+        [] -> dn
     where
         getFirstMatch = take 1 . dropWhile (== dn) $
-            map (\(src, dst) -> PR.subRegexPR src dst dn) fts
+            map (flip regexSub dn) fts
 
-rewriteAttrs :: [AttrFromTo] -> LDIF -> Maybe LDIF
-rewriteAttrs afts  x@(LDIFEntry _ y@(LDAPEntry _ attrs)) =
-    case Nothing of
-        Just _ ->
-            Just $ x --{ldapEntry = y {leattrs = attrs'}}
-        Nothing -> Nothing
+rewriteAttr :: [(Attribute, FromTo)] -> AttrSpec -> AttrSpec
+rewriteAttr afts x@(attr, vals) =
+        maybe x doRewrite (lookup attr afts)
         where
-            (update, retained) = partition (\p ->
-                isJust $ lookup (fst p) attrs) afts
-            updated = []
-            result = updated ++ retained
-rewriteAttrs afts x@(LDIFMod _ y@(LDAPMod _ attr vals)) =
-    case Nothing of
-        Just (a, v) ->
-            Just $ x {modEntry = y {modType = a, modVals = v }}
-        Nothing -> Nothing
+            doRewrite subst = (attr, regexSubs subst vals)
 
-filterAttrs :: AttrList -> LDIF -> LDIF
-filterAttrs attrl ldif = ldif
+rewriteAttrs :: [(Attribute, FromTo)] -> LDIFEntry -> LDIFEntry
+rewriteAttrs afts  x@(LDIFEntry _ _ attrs) =
+    x { ldifAttrs = map (rewriteAttr afts) attrs }
 
+filterAttrs :: [Attribute] -> LDIFEntry -> LDIFEntry
+filterAttrs attrl ldif@(LDIFEntry _ _ attrs) = ldif {
+    ldifAttrs = filter (flip elem attrl . fst) attrs
+    }
+
+regexSub :: FromTo -> Value -> Value
+regexSub (src, dst) = PR.subRegexPR src dst
+
+regexSubs :: FromTo -> [Value] -> [Value]
+regexSubs subs = map (regexSub subs)
 

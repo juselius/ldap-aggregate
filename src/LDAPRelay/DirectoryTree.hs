@@ -19,7 +19,8 @@ printDIT ldap tree = do
     putStrLn . init . foldl prettify  "" $ ldif
     putStrLn "--"
     where
-        prettify s e@(LDAPEntry _ _) = show (LDAPEntry' e) ++ "\n" ++ s
+        prettify s (LDAPEntry dn attrs) =
+            show (LDIFEntry LdapModAdd dn attrs) ++ "\n" ++ s
 
 bindDIT :: String -> IO LDAP
 bindDIT tree = do
@@ -44,7 +45,13 @@ askBindPw = do
 
 modifyTreeFromLdif :: LDAP -> BS.ByteString -> IO ()
 modifyTreeFromLdif ldap ldif =
-    mapM_ (\(LDIFMod dn attrs) ->
-            ldapModify ldap dn [attrs]) $
-                either (error . show) id (parseLDIFStr "" ldif)
-
+    mapM_ doMod $ either (error . show) id (parseLDIFStr "" ldif)
+    where
+        doMod (LDIF (LDIFEntry LdapModAdd dn attrs)) =
+            ldapAdd ldap dn (list2ldm LdapModAdd attrs)
+        doMod (LDIF (LDIFEntry LdapModDelete dn _)) =
+            ldapDelete ldap dn
+        doMod (LDIF (LDIFEntry op dn attrs)) =
+            ldapModify ldap dn (list2ldm op attrs)
+        doMod (LDIFMod (LDIFEntry op dn attrs)) =
+            ldapModify ldap dn (list2ldm op attrs)

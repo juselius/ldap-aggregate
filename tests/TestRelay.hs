@@ -1,7 +1,6 @@
 module TestRelay ( tests ) where
 
 import Distribution.TestSuite
-import TestUtils
 
 tests :: IO [Test]
 tests = return [ Test succeeds, Test fails ]

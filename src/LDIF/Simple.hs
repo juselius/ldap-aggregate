@@ -12,6 +12,9 @@ module LDIF.Simple (
       parseLDIFStr
     , LDIF(..)
     , LDIFEntry(..)
+    , Attribute
+    , Value
+    , AttrSpec
 ) where
 
 import Prelude
@@ -34,9 +37,11 @@ data LDIFEntry = LDIFEntry {
           ldifOp    :: LDAPModOp
         , ldifDN    :: DN
         , ldifAttrs :: [AttrSpec]
-    }
+    } deriving (Eq)
 
-data LDIF = LDIF LDIFEntry | LDIFMod LDIFEntry
+data LDIF =
+      LDIF { ldifEntry :: LDIFEntry }
+    | LDIFMod { ldifEntry :: LDIFEntry } deriving (Eq)
 
 instance Show LDIF where
     show (LDIF x) = "LDIFEntry -> " ++ show x

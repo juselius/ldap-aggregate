@@ -49,9 +49,9 @@ instance Show LDIF where
 
 instance Show LDIFEntry where
     show (LDIFEntry op dn attrs) = "dn: " ++ dn ++ "\n"
-        ++ "oper: " ++ show op ++ "\n"
         ++ (init . foldl (\s a ->
             s ++ "    " ++ show a ++ "\n") "" $ attrs)
+        ++ "\n    <" ++ show op ++ ">\n"
 
 -- | Parse LDIF content
 parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]

@@ -8,10 +8,10 @@ import Control.Concurrent
 import LDIF.Simple
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex.Posix
-import Text.ParserCombinators.Parsec
 
 import Settings
 
+main :: IO ()
 main = do
     settings <- readSettings "ldaprelay.cfg"
     inh <- openFile (auditlog settings) ReadMode
@@ -28,11 +28,14 @@ waitForLine inh = do
             waitForLine inh
         else BS.hGetLine inh
 
-matchEmptyLine = "^ *$" :: BS.ByteString
+matchEmptyLine :: BS.ByteString
+matchEmptyLine = "^ *$"
 
-matchBeginRecord = "^# (add|modify|delete) ([0-9]+)" :: BS.ByteString
+matchBeginRecord :: BS.ByteString
+matchBeginRecord = "^# (add|modify|delete) ([0-9]+)"
 
-matchEndRecord = "^# end (add|modify|delete) ([0-9]+)" :: BS.ByteString
+matchEndRecord :: BS.ByteString
+matchEndRecord = "^# end (add|modify|delete) ([0-9]+)"
 
 type Match = (BS.ByteString, BS.ByteString, BS.ByteString, [BS.ByteString])
 
@@ -41,9 +44,9 @@ readAuditlogBlock inh acc = do
     line <- waitForLine inh
     if line =~ matchEmptyLine
         then readAuditlogBlock inh acc
-        else let (_, _, _, match) = line =~ matchEndRecord :: Match in
-            if not $ null match
-                then return $ (read (BS.unpack $ match !! 1), BS.unlines acc)
+        else let (_, _, _, hits) = line =~ matchEndRecord :: Match in
+            if not $ null hits
+                then return $ (read (BS.unpack $ hits !! 1), BS.unlines acc)
                 else readAuditlogBlock inh (acc ++ [line])
 
 processData :: Handle ->  IO ()

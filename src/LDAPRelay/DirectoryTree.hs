@@ -21,7 +21,7 @@ printDIT ldap tree = do
     putStrLn "--"
     where
         prettify s (LDAPEntry dn attrs) =
-            show (LDIFEntry LdapModAdd dn attrs) ++ "\n" ++ s
+            show (LDIF (dn, LDIFEntry attrs)) ++ "\n" ++ s
 
 bindDIT :: String -> IO LDAP
 bindDIT tree = do
@@ -52,11 +52,13 @@ modifyTreeFromLdif :: LDAP -> [LDIF] -> IO ()
 modifyTreeFromLdif ldap ldif =
     mapM_ runMod ldif
     where
-        runMod (LDIF (LDIFEntry LdapModAdd dn attrs)) =
-            ldapAdd ldap dn (list2ldm LdapModAdd attrs)
-        runMod (LDIF (LDIFEntry LdapModDelete dn _)) =
-            ldapDelete ldap dn
-        runMod (LDIF (LDIFEntry op dn attrs)) =
-            ldapModify ldap dn (list2ldm op attrs)
-        runMod (LDIFMod (LDIFEntry op dn attrs)) =
-            ldapModify ldap dn (list2ldm op attrs)
+        runMod (LDIF (dn, entry)) = case entry of
+            LDIFEntry attrs ->
+                ldapAdd ldap dn (list2ldm LdapModAdd attrs)
+            LDIFChange LdapModAdd attrs ->
+                ldapAdd ldap dn (list2ldm LdapModAdd attrs)
+            LDIFChange LdapModDelete _ ->
+                ldapDelete ldap dn
+            LDIFUpdate op attrs ->
+                ldapModify ldap dn (list2ldm op attrs)
+            _ -> error "Invalid LDIF operation."

@@ -7,7 +7,7 @@ module LDAPRelay.Rewrite (
     , rewriteAttrs
     , filterAttrs
     , filterEntry
-    , ldapRec2LdapAdd
+    , ldapStr2LdapMod
 ) where
 
 import LDAP
@@ -21,17 +21,19 @@ type RegexStr = String
 type FromTo = (RegexStr, RegexStr)
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
-ldapRec2LdapAdd :: BS.ByteString -> [(String, [LDAPMod])]
-ldapRec2LdapAdd str =
+ldapStr2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
+ldapStr2LdapMod str =
         map toMod ldif
     where
         ldif = extractEntries $ parseLDIFStr "" str
         extractEntries =
             either (error . show) (map ldifEntry)
-        toMod (LDIFEntry op dn attrs) = (dn, list2ldm op attrs)
+        toMod (dn, LDIFEntry attrs) = (dn, list2ldm LdapModAdd attrs)
+        toMod (dn, LDIFUpdate op attrs) = (dn, list2ldm op attrs)
+        toMod (dn, LDIFChange op attrs) = (dn, list2ldm op attrs)
 
-rewriteDN :: [FromTo] -> LDIFEntry -> LDIFEntry
-rewriteDN fts l@(LDIFEntry _ dn _) = l { ldifDN = substDN fts dn }
+rewriteDN :: [FromTo] -> LDIF -> LDIF
+rewriteDN fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
 
 substDN :: [FromTo] -> String -> String
 substDN fts dn =
@@ -48,18 +50,19 @@ rewriteAttr afts x@(attr, vals) =
         where
             doRewrite subst = (attr, regexSubs subst vals)
 
-rewriteAttrs :: [(Attribute, FromTo)] -> LDIFEntry -> LDIFEntry
-rewriteAttrs afts  x@(LDIFEntry _ _ attrs) =
-    x { ldifAttrs = map (rewriteAttr afts) attrs }
+rewriteAttrs :: [(Attribute, FromTo)] -> LDIF -> LDIF
+rewriteAttrs afts (LDIF (dn, x)) = LDIF
+    (dn, x { ldifAttrs = map (rewriteAttr afts) (ldifAttrs x) })
 
 filterAttrs :: [Attribute] -> [AttrSpec] -> [AttrSpec]
 filterAttrs attrl = filter (not . flip elem attrl . fst)
 
-filterEntry :: (String, [Attribute]) -> LDIFEntry -> LDIFEntry
-filterEntry (dnFilter, attrl) ldif@(LDIFEntry _ dn attrs) =
+filterEntry :: (DN, [Attribute]) -> LDIF -> LDIF
+filterEntry (dnFilter, attrl) x@(LDIF (dn, le)) =
     if dn =~ dnFilter
-        then ldif { ldifAttrs = filterAttrs attrl attrs }
-        else ldif
+        then LDIF (dn, le { ldifAttrs =
+            filterAttrs attrl (ldifAttrs le) })
+        else x
 
 regexSub :: FromTo -> Value -> Value
 regexSub (src, dst) = PR.subRegexPR src dst

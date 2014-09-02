@@ -6,7 +6,7 @@ module Settings (
 
 import System.Exit
 import Data.ConfigFile.Monadic
-import Control.Monad.Error
+import Control.Monad.Except
 
 data Settings = Settings {
       source :: DITInfo
@@ -25,7 +25,7 @@ data DITInfo = DITInfo {
 
 readSettings :: String -> IO Settings
 readSettings f = do
-    s <- runErrorT $ do
+    s <- runExceptT $ do
         dp <- defaultCP
         cp <- join . liftIO $ readfile f dp
         src <- readDIT cp "source"
@@ -49,7 +49,7 @@ readSettings f = do
                 putStrLn $ " ---> " ++ show s'
                 exitFailure
 
-readDIT :: ConfigParser -> String -> ErrorT CPError IO DITInfo
+readDIT :: ConfigParser -> String -> ExceptT CPError IO DITInfo
 readDIT cp sect = do
     url <- get cp sect "uri"
     bas <- get cp sect "base"
@@ -57,7 +57,7 @@ readDIT cp sect = do
     pw <- get cp sect "password"
     return $ DITInfo url bas dn pw
 
-defaultCP :: ErrorT CPError IO ConfigParser
+defaultCP :: ExceptT CPError IO ConfigParser
 defaultCP =
     set "DEFAULT" "auditlog" "auditlog.ldif" emptyCP
     >>= add_section "source"

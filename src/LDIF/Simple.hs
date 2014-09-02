@@ -6,7 +6,7 @@
 
     <jonas.juselius@uit.no> 2014
 -}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PackageImports #-}
 
 module LDIF.Simple (
       parseLDIFStr
@@ -23,8 +23,8 @@ import Data.List
 import Control.Monad
 import Text.LDIF.Preproc
 import LDAP.Modify (LDAPModOp(..))
-import Text.Parsec as PR
-import Text.Parsec.ByteString
+import "parsec" Text.Parsec as PR
+import "parsec" Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
 
 --import Debug.Trace

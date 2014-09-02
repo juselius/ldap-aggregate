@@ -50,22 +50,23 @@ data LDIFRecord =
 newtype LDIF = LDIF { ldifEntry :: Entry } deriving (Eq)
 
 instance Show LDIF where
-    show (LDIF (dn, LDIFEntry x)) = "LDIFEntry -> " ++ "dn: " ++ dn
-        ++ "\n" ++ show x
-    show (LDIF (dn, LDIFChange _ x)) = "LDIFChange -> " ++ "dn: " ++ dn
-        ++ "\n" ++ show x
-    show (LDIF (dn, LDIFUpdate _ x)) = "LDIFUpdate -> " ++ "dn: " ++ dn
-        ++ "\n" ++ show x
+    show (LDIF (dn, rec)) = case rec of
+        x@(LDIFEntry _) -> formatEntry "LDIFEntry -> " x
+        x@(LDIFChange _ _) -> formatEntry "LDIFChange -> " x
+        x@(LDIFUpdate _ _) -> formatEntry "LDIFUpdate -> " x
+        where
+            formatEntry s x = s ++ "dn: " ++ dn ++ "\n" ++ show x
 
 instance Show LDIFRecord where
-    show (LDIFEntry attrs) = init . foldl (\s a ->
-        s ++ "    " ++ show a ++ "\n") "" $ attrs
-    show (LDIFChange op attrs) = (init . foldl (\s a ->
-        s ++ "    " ++ show a ++ "\n") "" $ attrs)
-        ++ "\n    <" ++ show op ++ ">\n"
-    show (LDIFUpdate op attrs) = (init . foldl (\s a ->
-        s ++ "    " ++ show a ++ "\n") "" $ attrs)
-        ++ "\n    <" ++ show op ++ ">\n"
+    show rec = case rec of
+        (LDIFEntry attrs) -> formatEntry attrs
+        (LDIFChange op attrs) -> formatEntry' op attrs
+        (LDIFUpdate op attrs) -> formatEntry' op attrs
+        where
+            formatEntry attrs = init . foldl (\s a ->
+                s ++ "    " ++ show a ++ "\n") "" $ attrs
+            formatEntry' op attrs = formatEntry attrs ++
+                "\n    <" ++ show op ++ ">\n"
 
 -- | Parse LDIF content
 parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
@@ -131,12 +132,14 @@ pRec = do
         collectAttrs :: [LDIF] -> [LDIF]
         collectAttrs = map collect
             where
-                collect (LDIF (dn, l@(LDIFEntry attrs)))
-                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
-                collect (LDIF (dn, l@(LDIFChange _ attrs)))
-                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
-                collect (LDIF (dn, l@(LDIFUpdate _ attrs)))
-                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
+                collect (LDIF (dn, rec)) =
+                    case rec of
+                        l@(LDIFEntry attrs) ->
+                            LDIF (dn, l {ldifAttrs = reGroup attrs})
+                        l@(LDIFChange _ attrs) ->
+                            LDIF (dn, l {ldifAttrs = reGroup attrs})
+                        l@(LDIFUpdate _ attrs) ->
+                            LDIF (dn, l {ldifAttrs = reGroup attrs})
                 reGroup xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
                 gather xs = (fst (head xs), concatMap snd xs)
 

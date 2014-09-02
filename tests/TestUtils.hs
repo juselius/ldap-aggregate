@@ -45,7 +45,7 @@ populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode BS.hGetContents
     lpops <- withFile "./ldif/source.populate.ldif" ReadMode BS.hGetContents
     let commit x = mapM_ (\(dn, attrs) ->
-            ldapAdd ldap dn attrs) (ldapRec2LdapAdd x)
+            ldapAdd ldap dn attrs) (ldapStr2LdapMod x)
     commit ltree
     commit lpops
 
@@ -54,7 +54,7 @@ populateTarget ldap = do
     ltree <- withFile "./ldif/target.tree.ldif" ReadMode BS.hGetContents
     lpops <- withFile "./ldif/target.populate.ldif" ReadMode BS.hGetContents
     let commit x = mapM_ (\(dn, attrs) ->
-            ldapAdd ldap dn attrs) (ldapRec2LdapAdd x)
+            ldapAdd ldap dn attrs) (ldapStr2LdapMod x)
     commit ltree
     commit lpops
 
@@ -69,7 +69,7 @@ testRelocPatterns = [
     , ("dc=foo", "dc=bar")
     ]
 
-testLDIF = LDIFEntry LdapModAdd testDN [
+testLDIF = LDIFEntry [
       ("uid", ["foo"])
     , ("member", ["foo", "bar"])
     , ("description", ["foobar"])

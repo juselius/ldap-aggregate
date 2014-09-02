@@ -78,7 +78,9 @@ executable ldaprelay.bin
 test-suite tests
     type: exitcode-stdio-1.0
     main-is: tests.hs
-    ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
+    ghc-options: 
+        -w -threaded -rtsopts -with-rtsopts=-N
+        -fhpc 
     hs-source-dirs: tests, src
     if !flag(test-properties)
         buildable: False

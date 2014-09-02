@@ -13,6 +13,7 @@ module LDAPRelay.Rewrite (
 import LDAP
 import LDIF.Simple
 import Text.Regex.Posix
+import Data.Maybe
 import qualified Data.ByteString.Char8 as BS
 import qualified Text.RegexPR as PR
 
@@ -35,10 +36,10 @@ rewriteDN fts l@(LDIFEntry _ dn _) = l { ldifDN = substDN fts dn }
 substDN :: [FromTo] -> String -> String
 substDN fts dn =
     case getFirstMatch of
-        dn':_ -> dn'
-        [] -> dn
+        Just dn' -> dn'
+        Nothing -> dn
     where
-        getFirstMatch = take 1 . dropWhile (== dn) $
+        getFirstMatch = listToMaybe . dropWhile (== dn) $
             map (flip regexSub dn) fts
 
 rewriteAttr :: [(Attribute, FromTo)] -> AttrSpec -> AttrSpec

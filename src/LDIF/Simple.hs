@@ -11,10 +11,11 @@
 module LDIF.Simple (
       parseLDIFStr
     , LDIF(..)
-    , LDIFEntry(..)
+    , LDIFRecord(..)
     , Attribute
     , Value
     , AttrSpec
+    , DN
 ) where
 
 import Prelude
@@ -30,27 +31,40 @@ import qualified Data.ByteString.Char8 as BC
 type DN = String
 type Attribute = String
 type Value = String
-
 type AttrSpec = (Attribute, [Value])
+type Entry = (DN, LDIFRecord)
 
-data LDIFEntry = LDIFEntry {
+data LDIFRecord =
+      LDIFEntry {
+          ldifAttrs :: [AttrSpec]
+    }
+    | LDIFChange {
           ldifOp    :: LDAPModOp
-        , ldifDN    :: DN
+        , ldifAttrs :: [AttrSpec]
+    }
+    | LDIFUpdate {
+          ldifOp    :: LDAPModOp
         , ldifAttrs :: [AttrSpec]
     } deriving (Eq)
 
-data LDIF =
-      LDIF { ldifEntry :: LDIFEntry }
-    | LDIFMod { ldifEntry :: LDIFEntry } deriving (Eq)
+newtype LDIF = LDIF { ldifEntry :: Entry } deriving (Eq)
 
 instance Show LDIF where
-    show (LDIF x) = "LDIFEntry -> " ++ show x
-    show (LDIFMod x) = "LDIFMod -> " ++ show x
+    show (LDIF (dn, LDIFEntry x)) = "LDIFEntry -> " ++ "dn: " ++ dn
+        ++ "\n" ++ show x
+    show (LDIF (dn, LDIFChange _ x)) = "LDIFChange -> " ++ "dn: " ++ dn
+        ++ "\n" ++ show x
+    show (LDIF (dn, LDIFUpdate _ x)) = "LDIFUpdate -> " ++ "dn: " ++ dn
+        ++ "\n" ++ show x
 
-instance Show LDIFEntry where
-    show (LDIFEntry op dn attrs) = "dn: " ++ dn ++ "\n"
-        ++ (init . foldl (\s a ->
-            s ++ "    " ++ show a ++ "\n") "" $ attrs)
+instance Show LDIFRecord where
+    show (LDIFEntry attrs) = init . foldl (\s a ->
+        s ++ "    " ++ show a ++ "\n") "" $ attrs
+    show (LDIFChange op attrs) = (init . foldl (\s a ->
+        s ++ "    " ++ show a ++ "\n") "" $ attrs)
+        ++ "\n    <" ++ show op ++ ">\n"
+    show (LDIFUpdate op attrs) = (init . foldl (\s a ->
+        s ++ "    " ++ show a ++ "\n") "" $ attrs)
         ++ "\n    <" ++ show op ++ ">\n"
 
 -- | Parse LDIF content
@@ -104,47 +118,50 @@ pRec = do
         pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
-            attrVals `seq` return [LDIF $ LDIFEntry LdapModAdd dn attrVals]
+            attrVals `seq` return [LDIF (dn, LDIFEntry attrVals)]
         pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
             void $ string "changetype:"
             pFILL
-            try (pChangeAdd dn)
-                <|> try (pChangeDel dn)
-                <|> try (pChangeMod dn)
-                <|> pChangeModDN dn
+            r <- try pChangeAdd
+                <|> try pChangeDel
+                <|> try pChangeMod
+                <|> pChangeModDN
+            return $ map (\x -> LDIF (dn, x)) r
         collectAttrs :: [LDIF] -> [LDIF]
         collectAttrs = map collect
             where
-                collect (LDIF l@(LDIFEntry _ _ attrs))
-                    = LDIF l {ldifAttrs = reGroup attrs}
-                collect (LDIFMod l@(LDIFEntry _ _ attrs))
-                    = LDIFMod l {ldifAttrs = reGroup attrs}
+                collect (LDIF (dn, l@(LDIFEntry attrs)))
+                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
+                collect (LDIF (dn, l@(LDIFChange _ attrs)))
+                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
+                collect (LDIF (dn, l@(LDIFUpdate _ attrs)))
+                    = LDIF (dn, l {ldifAttrs = reGroup attrs})
                 reGroup xs = map gather $ groupBy (\(a, _) (b, _) -> a == b) xs
                 gather xs = (fst (head xs), concatMap snd xs)
 
-pChangeAdd :: DN -> Parser [LDIF]
-pChangeAdd dn = do
+pChangeAdd :: Parser [LDIFRecord]
+pChangeAdd = do
     void $ string "add"
     pSEP
     attrs <- sepEndBy1 pAttrValSpec pSEP
-    return [LDIF $ LDIFEntry LdapModAdd dn attrs]
+    return [LDIFChange LdapModAdd attrs]
 
-pChangeDel :: DN -> Parser [LDIF]
-pChangeDel dn = do
+pChangeDel :: Parser [LDIFRecord]
+pChangeDel = do
     void $ string "delete"
     pSEP
     attrs <- sepEndBy pAttrValSpec pSEP
-    return [LDIF $ LDIFEntry LdapModAdd dn attrs]
+    return [LDIFChange LdapModDelete attrs]
 
-pChangeMod :: DN -> Parser [LDIF]
-pChangeMod dn = do
+pChangeMod :: Parser [LDIFRecord]
+pChangeMod = do
     void $ string "modify"
     pSEP
-    sepEndBy1 (pModSpec dn) (char '-' >> pSEP)
+    sepEndBy1 pModSpec (char '-' >> pSEP)
 
-pChangeModDN :: DN -> Parser [LDIF]
-pChangeModDN dn = do
+pChangeModDN :: Parser [LDIFRecord]
+pChangeModDN = do
     void $ string "modrdn"
     pSEP
     void $ string "newrdn:"
@@ -155,7 +172,7 @@ pChangeModDN dn = do
     pFILL
     void $ oneOf "01"
     pSEP
-    return [LDIF $ LDIFEntry  LdapModDelete dn []]
+    return [LDIFChange LdapModDelete []]
 
 pRDN :: Parser String
 pRDN = pSafeString
@@ -165,20 +182,20 @@ pDN = do
     pFILL
     pSafeString'
 
-pModSpec :: String -> Parser LDIF
-pModSpec dn = do
+pModSpec :: Parser LDIFRecord
+pModSpec = do
    modStr <- pModType
    pFILL
    void pSafeString  -- attribute type to modify (ignore)
    pSEP
    attrs <- sepEndBy pAttrValSpec pSEP
-   return $ mkMod modStr dn attrs
+   return $ mkMod modStr attrs
 
-mkMod :: String -> String -> [AttrSpec] -> LDIF
-mkMod modStr dn attrs
-    | modStr == "add:" = LDIFMod $ LDIFEntry LdapModAdd dn attrs
-    | modStr == "delete:" = LDIFMod $ LDIFEntry LdapModDelete dn attrs
-    | modStr == "replace:" = LDIFMod $ LDIFEntry LdapModReplace dn attrs
+mkMod :: String -> [AttrSpec] -> LDIFRecord
+mkMod modStr attrs
+    | modStr == "add:" = LDIFUpdate LdapModAdd attrs
+    | modStr == "delete:" = LDIFUpdate LdapModDelete attrs
+    | modStr == "replace:" = LDIFUpdate LdapModReplace attrs
     | otherwise = error $ "unexpected mod:" ++ modStr
     -- error can not be reached because pModType
 

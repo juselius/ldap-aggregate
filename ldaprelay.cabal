@@ -17,102 +17,91 @@ description:
     .
     Relay and rewrite LDAP data from one DIT to another.
 
-extra-source-files: 
+extra-source-files:
     README.rst
     .gitignore
 
 source-repository head
-  type: git
-  location: git@source.uit.no:hpc/ldaprelay.git
+    type: git
+    location: git@source.uit.no:hpc/ldaprelay.git
 
 flag test-properties
-  default: True
-  manual: True
+    default: True
+    manual: True
 
 library
-  exposed-modules:
-    Settings
-    LDIF.Simple
-    LDAPRelay.Rewrite
-    LDAPRelay.DirectoryTree
-  build-depends:
-      base
-    , mtl
-    , ConfigFile
-    , LDAP
-    , ldif
-    , bytestring
-    , parsec
-    , regexpr
-    , regex-posix
-  other-modules: Paths_ldaprelay
-  hs-source-dirs: src
-  ghc-options:
-    -Wall -O2
-    -fwarn-tabs
-    -fdicts-cheap
-    -funbox-strict-fields
-    -fmax-simplifier-iterations=10
+    exposed-modules:
+        Settings
+        LDIF.Simple
+        LDAPRelay.Rewrite
+        LDAPRelay.DirectoryTree
+    build-depends:
+          base
+        , mtl
+        , ConfigFile
+        , LDAP
+        , ldif
+        , bytestring
+        , parsec
+        , regexpr
+        , regex-posix
+    other-modules: Paths_ldaprelay
+    hs-source-dirs: src
+    ghc-options:
+        -Wall -O2
+        -fwarn-tabs
+        -fdicts-cheap
+        -funbox-strict-fields
+        -fmax-simplifier-iterations=10
 
 executable ldaprelay.bin
-  main-is: Main.hs
-  build-depends:
-      base
-    , mtl
-    , regex-posix
-    , ConfigFile
-    , bytestring
-    , ldif
-    , parsec
-    , LDAP
-  other-modules: Paths_ldaprelay
-  hs-source-dirs: src
-  ghc-options:
-     -Wall -O2
-    -fwarn-tabs
-    -fdicts-cheap
-    -funbox-strict-fields
-    -fmax-simplifier-iterations=10
+    main-is: Main.hs
+    build-depends:
+          base
+        , mtl
+        , regex-posix
+        , ConfigFile
+        , bytestring
+        , ldif
+        , parsec
+        , LDAP
+    other-modules: Paths_ldaprelay
+    hs-source-dirs: src
+    ghc-options:
+         -Wall -O2
+        -fwarn-tabs
+        -fdicts-cheap
+        -funbox-strict-fields
+        -fmax-simplifier-iterations=10
 
-test-suite test-relay
-  type: detailed-0.9
-  test-module: TestRelay
-  ghc-options:
-    -w
-    -threaded
-    -rtsopts
-    -with-rtsopts=-N
-  hs-source-dirs: tests, src
-  build-depends:
-      base
-    , Cabal
-    , regex-posix
-    , ConfigFile
-    , bytestring
-    , ldif
-    , parsec
-    , LDAP
-    , regexpr
-  other-modules: Paths_ldaprelay
 
 test-suite example
-  type: exitcode-stdio-1.0
-  main-is: example.hs
-  ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
-  hs-source-dirs: tests
-  if !flag(test-properties)
-    buildable: False
-  else
-    build-depends:
-        base
-      , QuickCheck                 >= 2.4
+    type: exitcode-stdio-1.0
+    main-is: tests.hs
+    ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
+    hs-source-dirs: tests, src
+    if !flag(test-properties)
+        buildable: False
+    else
+        build-depends:
+              base
+            , QuickCheck      >= 2.4
+            , regex-posix
+            , ConfigFile
+            , bytestring
+            , ldif
+            , parsec
+            , LDAP
+            , regexpr
+    other-modules: Paths_ldaprelay
 
 benchmark performance
-  type:           exitcode-stdio-1.0
-  main-is:        perf.hs
-  ghc-options:    -w -O2 -threaded -fdicts-cheap -funbox-strict-fields
-  hs-source-dirs: benchmarks
-  build-depends:
-      base
-    , time
+    type:           exitcode-stdio-1.0
+    main-is:        perf.hs
+    ghc-options: -w -O2 -threaded 
+        -fdicts-cheap -funbox-strict-fields
+    hs-source-dirs: benchmarks, src
+    build-depends:
+          base
+        , time
 

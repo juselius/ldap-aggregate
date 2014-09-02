@@ -75,7 +75,7 @@ executable ldaprelay.bin
         -fmax-simplifier-iterations=10
 
 
-test-suite example
+test-suite tests
     type: exitcode-stdio-1.0
     main-is: tests.hs
     ghc-options: -w -threaded -rtsopts -with-rtsopts=-N
@@ -93,6 +93,10 @@ test-suite example
             , parsec
             , LDAP
             , regexpr
+            , tasty
+            , tasty-quickcheck
+            , tasty-smallcheck
+            , tasty-hunit
     other-modules: Paths_ldaprelay
 
 benchmark performance

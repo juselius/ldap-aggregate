@@ -5,21 +5,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module LDIF.Compare (
-      diffLdifDN
+      filterEqDN
 ) where
 
 import LDIF.Simple
 import LDIF.Utils
-import Data.List
 import Data.Maybe
 
-diffLdifDN :: [LDIF] -> [LDIF] -> Maybe [LDIF]
-diffLdifDN src dest =
-    case diff of
-       _:_ -> Just (map LDIF diff)
-       _ -> Nothing
+filterEqDN :: [LDIF] -> [LDIF] -> [LDIF]
+filterEqDN src dest =
+    map LDIF filterMatching
     where
-        diff = catMaybes $ map (flip lookup dest' . fst) src'
+        filterMatching = filter (\x -> isNothing $ lookup (fst x) dest') src'
         src' = toAssocList src
         dest' = toAssocList dest
 
+
+filterEq :: [LDIF] -> [LDIF] -> [LDIF]
+filterEq src dest =
+    map LDIF filterMatching
+    where
+        filterMatching = filter (\x -> case lookup (fst x) dest') src'
+        src' = toAssocList src
+        dest' = toAssocList dest

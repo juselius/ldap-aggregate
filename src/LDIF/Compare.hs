@@ -15,6 +15,11 @@ import LDIF.Utils
 import Data.List
 import Data.Maybe
 
+type Foo = forall a b. (Eq a, Eq b) => (a, b)
+
+foo :: Foo -> Foo
+foo x = x
+
 filterEqDN :: [LDIF] -> [LDIF] -> [LDIF]
 filterEqDN from to =
     map LDIF $ filter (isNothing . flip lookup (toAL to) . fst) (toAL from)
@@ -36,7 +41,7 @@ missing :: (Eq a, Eq b) => [(a, [b])] -> [(a, [b])] -> [(a, [b])]
 missing from to = filter (\(a, _) -> isNothing $ lookup a to) from
 
 filterValues :: (Eq a) => [a] -> [a] -> [a]
-filterValues from to = filter (`notElem` from) to
+filterValues from = filter (`notElem` from)
 
 toAL :: [LDIF] -> [(DN, LDIFRecord)]
 toAL = toAssocList

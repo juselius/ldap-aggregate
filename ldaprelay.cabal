@@ -2,9 +2,10 @@ name:          ldaprelay
 category:      Application
 version:       0.1
 stability:     unstable
-author:        Jonas Juselius
+author:        Jonas Juselius <jonas.juselius@uit.no>,
+               Radoslav Dorcik <radoslav.dorcik@gmail.com>
 maintainer:    Jonas Juselius <jonas.juselius@uit.no>
-license:       OtherLicense
+license:       BSD3
 license-file:  LICENSE.rst
 copyright:     Copyright (C) 2014 Jonas Juselius
 cabal-version: >= 1.8
@@ -33,7 +34,7 @@ library
     exposed-modules:
         Settings
         LDIF.Simple
-        LDIF.Compare
+        LDIF.Preproc
         LDIF.Utils
         LDAPRelay.Rewrite
         LDAPRelay.DirectoryTree

@@ -8,6 +8,7 @@ module LDIF.Types (
     , Value
     , AttrSpec
     , Entry
+    , liftLC
 ) where
 
 import LDAP.Modify (LDAPModOp(..))
@@ -19,6 +20,8 @@ type AttrSpec = (Attribute, [Value])
 type Entry = (DN, LDIFRecord)
 
 newtype LDIFContents = LDIFContents [AttrSpec] deriving (Eq)
+
+liftLC f (LDIFContents x) = LDIFContents $ f x
 
 data LDIFRecord =
       LDIFEntry  { ldifContents :: LDIFContents }

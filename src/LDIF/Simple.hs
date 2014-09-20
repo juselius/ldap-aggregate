@@ -92,17 +92,16 @@ pRec = do
         collectAttrs :: [LDIF] -> [LDIF]
         collectAttrs = map collect
             where
-                collect (LDIF x@(dn, r@rec)) =
-                    case rec of
-                        LDIFDelete -> LDIF x
-                        c@(LDIFChange _ attrs) ->
-                            LDIF (dn, c { ldifMods = reGroup attrs })
-                        _ -> LDIF (dn, r { ldifContents =
-                                reGroupContents (ldifContents r) })
-                reGroup xs =
-                    map gather . groupBy (\(a, _) (b, _) -> a == b) $ xs
-                reGroupContents (LDIFContents c) = LDIFContents $ reGroup c
+                collect (LDIF x@(dn, rec)) =
+                    LDIF $ case rec of
+                        LDIFDelete -> x
+                        LDIFEntry l -> (dn, LDIFEntry (liftLC reGroup l))
+                        LDIFAdd l -> (dn, LDIFAdd (liftLC reGroup l))
+                        LDIFChange op attrs ->
+                            (dn, LDIFChange op (reGroup attrs))
+                reGroup xs =  map gather . groupBy cmpfst $ xs
                 gather xs = (fst (head xs), concatMap snd xs)
+                cmpfst (a, _) (b, _) = a == b
 
 pChangeAdd :: Parser [LDIFRecord]
 pChangeAdd = do

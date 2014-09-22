@@ -27,8 +27,6 @@ import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
 
---import Debug.Trace
-
 -- | Parse LDIF content
 parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
 parseLDIFStr name xs = case eldif of
@@ -48,14 +46,12 @@ pLdif = do
     eof
     return $ concat recs
     where
-        pVersionSpec :: Parser String
         pVersionSpec = do
             void $ string "version:"
             pFILL
             xs <- many1 digit
             pSEPs1
             return xs
-        pSearchResult :: Parser ()
         pSearchResult = do
             void $ string "search:"
             pFILL
@@ -73,23 +69,21 @@ pRec = do
     attrs <- try (pChangeRec dn) <|> pAttrValRec dn
     return $ collectAttrs attrs
     where
-        pDNSpec :: Parser DN
         pDNSpec = do
             void $ string "dn:"
             pDN
-        pAttrValRec :: DN -> Parser [LDIF]
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
             attrVals `seq` return [LDIF (dn, LDIFEntry $ LDIFContents attrVals)]
-        pChangeRec :: DN -> Parser [LDIF]
         pChangeRec dn = do
             void $ string "changetype:"
             pFILL
-            r <- try pChangeAdd
-                <|> try pChangeDel
+            r <- listify (try pChangeAdd)
+                <|> listify (try pChangeDel)
                 <|> try pChangeMod
             return $ map (\x -> LDIF (dn, x)) r
-        collectAttrs :: [LDIF] -> [LDIF]
+            where
+                listify = fmap (:[])
         collectAttrs = map collect
             where
                 collect (LDIF x@(dn, rec)) =
@@ -103,19 +97,19 @@ pRec = do
                 gather xs = (fst (head xs), concatMap snd xs)
                 cmpfst (a, _) (b, _) = a == b
 
-pChangeAdd :: Parser [LDIFRecord]
+pChangeAdd :: Parser LDIFRecord
 pChangeAdd = do
     void $ string "add"
     pSEP
     attrs <- sepEndBy1 pAttrValSpec pSEP
-    return [LDIFAdd $ LDIFContents attrs]
+    return . LDIFAdd . LDIFContents $ attrs
 
-pChangeDel :: Parser [LDIFRecord]
+pChangeDel :: Parser LDIFRecord
 pChangeDel = do
     void $ string "delete"
     pSEP
     void $ sepEndBy pAttrValSpec pSEP
-    return [LDIFDelete]
+    return LDIFDelete
 
 pChangeMod :: Parser [LDIFRecord]
 pChangeMod = do

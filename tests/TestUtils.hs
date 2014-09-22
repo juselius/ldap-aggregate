@@ -16,7 +16,7 @@ module TestUtils (
 import System.IO
 import Text.Regex.Posix
 import LDAP
-import LDIF.Simple
+import LDIF.Parser
 import qualified Data.ByteString.Char8 as BS
 
 import LDAPRelay.Rewrite

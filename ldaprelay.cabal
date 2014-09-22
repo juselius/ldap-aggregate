@@ -33,7 +33,7 @@ flag test-properties
 library
     exposed-modules:
         Settings
-        LDIF.Simple
+        LDIF.Parser
         LDIF.Preproc
         LDIF.Utils
         LDAPRelay.Rewrite

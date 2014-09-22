@@ -10,7 +10,7 @@ module LDIF.Utils (
     , isUniqDN
 ) where
 
-import LDIFParser
+import LDIF.Parser
 import Data.List
 import Data.Maybe
 import qualified Data.HashMap.Lazy as HM

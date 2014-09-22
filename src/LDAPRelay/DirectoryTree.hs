@@ -11,7 +11,7 @@ module LDAPRelay.DirectoryTree (
 
 import System.IO
 import LDAP
-import LDIFParser
+import LDIF.Parser
 import qualified Data.ByteString.Char8 as BS
 
 printDIT :: LDAP -> String -> IO ()

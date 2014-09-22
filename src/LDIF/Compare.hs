@@ -10,7 +10,7 @@ module LDIF.Compare (
     , filterAttrs
 ) where
 
-import LDIFParser
+import LDIF.Parser
 import LDIF.Utils
 import Data.List
 import Data.Maybe

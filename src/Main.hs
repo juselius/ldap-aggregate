@@ -5,7 +5,7 @@ module Main where
 import System.IO
 import Control.Concurrent
 {-import Text.LDIF.Preproc-}
-import LDIF.Simple
+import LDIFParser
 import qualified Data.ByteString.Char8 as BS
 import Text.Regex.Posix
 

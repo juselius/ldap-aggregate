@@ -11,7 +11,7 @@ module LDAPRelay.Rewrite (
 ) where
 
 import LDAP
-import LDIF.Simple
+import LDIFParser
 import Text.Regex.Posix
 import Data.Maybe
 import qualified Data.ByteString.Char8 as BS

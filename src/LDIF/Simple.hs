@@ -8,7 +8,7 @@
 -}
 {-# LANGUAGE OverloadedStrings, PackageImports #-}
 
-module LDIF.Simple (
+module LDIFParser (
       parseLDIFStr
     , LDIF(..)
     , LDIFRecord(..)

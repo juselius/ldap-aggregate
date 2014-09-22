@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module LDIF.Types (
       LDAPModOp(..)
     , LDIFRecord(..)
@@ -8,10 +9,13 @@ module LDIF.Types (
     , Value
     , AttrSpec
     , Entry
-    , liftLC
+    , isContentsLdif
+    , extractContentsLdif
+    , toAList
 ) where
 
 import LDAP.Modify (LDAPModOp(..))
+import Control.Arrow(second)
 
 type DN = String
 type Attribute = String
@@ -19,20 +23,31 @@ type Value = String
 type AttrSpec = (Attribute, [Value])
 type Entry = (DN, LDIFRecord)
 
-newtype LDIFContents = LDIFContents [AttrSpec] deriving (Eq)
-
-liftLC f (LDIFContents x) = LDIFContents $ f x
-
 data LDIFRecord =
-      LDIFEntry  { ldifContents :: LDIFContents }
-    | LDIFAdd    { ldifContents :: LDIFContents }
+      LDIFEntry  { ldifRecord :: [AttrSpec] }
+    | LDIFAdd    { ldifRecord :: [AttrSpec] }
+    | LDIFChange { ldifOp :: LDAPModOp , ldifRecord :: [AttrSpec] }
     | LDIFDelete
-    | LDIFChange {
-          ldifOp    :: LDAPModOp
-        , ldifMods :: [AttrSpec]
-    } deriving (Eq)
+    deriving (Eq)
 
 newtype LDIF = LDIF { ldifEntry :: Entry } deriving (Eq)
+
+newtype LDIFContents = LDIFContents (DN, [AttrSpec]) deriving (Eq)
+
+isContentsLdif :: LDIFRecord -> Bool
+isContentsLdif = \case
+    LDIFEntry _ -> True
+    LDIFAdd _ -> True
+    _ -> False
+
+extractContentsLdif :: [LDIF] -> [LDIFContents]
+extractContentsLdif l = map (\(LDIF x) ->
+    LDIFContents (second ldifRecord x)) $ selectContents l
+    where
+        selectContents = filter (\(LDIF (_, rec)) -> isContentsLdif rec)
+
+toAList :: [LDIFContents] -> [(DN, [AttrSpec])]
+toAList = map (\(LDIFContents x) -> x)
 
 instance Show LDIF where
     show (LDIF (dn, rec)) = case rec of
@@ -44,7 +59,7 @@ instance Show LDIF where
             formatEntry s x = s ++ "dn: " ++ dn ++ "\n" ++ show x
 
 instance Show LDIFRecord where
-    show rec = case rec of
+    show = \case
         (LDIFEntry attrs) -> show attrs
         (LDIFAdd attrs) -> show attrs
         (LDIFChange op attrs) -> formatEntry op attrs
@@ -54,5 +69,6 @@ instance Show LDIFRecord where
                 "\n    <" ++ show op ++ ">\n"
 
 instance Show LDIFContents where
-    show (LDIFContents x) = init . foldl (\s a ->
-            s ++ "    " ++ show a ++ "\n") "" $ x
+    show (LDIFContents (dn, x)) = "LDIFContents -> dn: " ++ dn ++ "\n" ++
+        show x
+

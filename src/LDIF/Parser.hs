@@ -74,7 +74,7 @@ pRec = do
             pDN
         pAttrValRec dn = do
             attrVals <- sepEndBy1 pAttrValSpec pSEP
-            attrVals `seq` return [LDIF (dn, LDIFEntry $ LDIFContents attrVals)]
+            attrVals `seq` return [LDIF (dn, LDIFEntry attrVals)]
         pChangeRec dn = do
             void $ string "changetype:"
             pFILL
@@ -89,8 +89,8 @@ pRec = do
                 collect (LDIF x@(dn, rec)) =
                     LDIF $ case rec of
                         LDIFDelete -> x
-                        LDIFEntry l -> (dn, LDIFEntry (liftLC reGroup l))
-                        LDIFAdd l -> (dn, LDIFAdd (liftLC reGroup l))
+                        LDIFEntry attrs -> (dn, LDIFEntry (reGroup attrs))
+                        LDIFAdd attrs -> (dn, LDIFAdd (reGroup attrs))
                         LDIFChange op attrs ->
                             (dn, LDIFChange op (reGroup attrs))
                 reGroup xs =  map gather . groupBy cmpfst $ xs
@@ -102,7 +102,7 @@ pChangeAdd = do
     void $ string "add"
     pSEP
     attrs <- sepEndBy1 pAttrValSpec pSEP
-    return . LDIFAdd . LDIFContents $ attrs
+    return . LDIFAdd $ attrs
 
 pChangeDel :: Parser LDIFRecord
 pChangeDel = do

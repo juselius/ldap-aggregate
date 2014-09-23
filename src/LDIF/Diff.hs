@@ -33,6 +33,7 @@ module LDIF.Diff (
 ) where
 
 import LDIF.Types
+import Data.Maybe
 import Data.List (foldl')
 import Control.Arrow (second)
 
@@ -43,16 +44,15 @@ diffLDIF c1 c2 = adds  ++ deletes ++ changes
     where
         adds = map content2add $ filter (not . isEntryIn) l2
             where
-                isEntryIn (dn, _) = maybe False (const True) (lookup dn l1)
+                isEntryIn (dn, _) = isJust $ lookup dn l1
                 content2add x = LDIF $ second LDIFAdd x
         (changes, deletes) = foldl' processEntry ([], []) l1
         processEntry (cx, dx) (dn, e1) = maybe delRec chRec (lookup dn l2)
             where
                 chRec e2 = (diffToLdif e2 ++ cx, dx)
-                delRec = (cx, (LDIF (dn, LDIFDelete)):dx)
+                delRec = (cx, LDIF (dn, LDIFDelete):dx)
                 diffToLdif e2 = map (\x -> LDIF (dn, x)) $ diffAttrs e1 e2
-        l1 = toAList c1
-        l2 = toAList c2
+        [l1, l2] = map toAList [c1, c2]
 
 -- | Calculate difference between two LDIF Records
 diffRecord :: LDIFRecord -> LDIFRecord -> [LDIFRecord]

@@ -3,8 +3,8 @@ module LDAPRelay.DirectoryTree (
     , printDIT
     , getDIT
     , askBindPw
-    , modifyTreeFromLdif
-    , modifyTreeFromLdifStr
+    , runLdif
+    , parseLdif
     , LDAPEntry(..)
     , LDAPMod(..)
     ) where
@@ -44,16 +44,15 @@ askBindPw = do
     putStrLn ""
     return pw
 
-modifyTreeFromLdifStr :: LDAP -> BS.ByteString -> IO ()
-modifyTreeFromLdifStr ldap ldif =
-    modifyTreeFromLdif ldap $ either (error . show) id (parseLDIFStr "" ldif)
+parseLdif :: BS.ByteString -> [LDIF]
+parseLdif ldif = either (error . show) id (parseLDIFStr [] ldif)
 
-modifyTreeFromLdif :: LDAP -> [LDIF] -> IO ()
-modifyTreeFromLdif ldap ldif =
-    mapM_ runMod ldif
+runLdif :: LDAP -> [LDIF] -> IO ()
+runLdif ldap =
+    mapM_ runMod
     where
         runMod (LDIF (dn, entry)) = case entry of
             LDIFEntry e -> ldapAdd ldap dn (snd (entry2add e))
             LDIFAdd e -> ldapAdd ldap dn e
-            LDIFChange e -> ldapAdd ldap dn e
+            LDIFChange e -> ldapModify ldap dn e
             LDIFDelete -> ldapDelete ldap dn

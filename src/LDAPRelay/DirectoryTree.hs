@@ -11,7 +11,7 @@ module LDAPRelay.DirectoryTree (
 
 import System.IO
 import LDAP
-import LDIF.Parser
+import LDIF
 import qualified Data.ByteString.Char8 as BS
 
 printDIT :: LDAP -> String -> IO ()
@@ -20,8 +20,8 @@ printDIT ldap tree = do
     putStrLn . init . foldl prettify  "" $ ldif
     putStrLn "--"
     where
-        prettify s (LDAPEntry dn attrs) =
-            show (LDIF (dn, LDIFEntry attrs)) ++ "\n" ++ s
+        prettify s e@(LDAPEntry dn _) =
+            show (LDIF (dn, LDIFEntry e)) ++ "\n" ++ s
 
 bindDIT :: String -> IO LDAP
 bindDIT tree = do
@@ -53,12 +53,7 @@ modifyTreeFromLdif ldap ldif =
     mapM_ runMod ldif
     where
         runMod (LDIF (dn, entry)) = case entry of
-            LDIFEntry attrs ->
-                ldapAdd ldap dn (list2ldm LdapModAdd attrs)
-            LDIFChange LdapModAdd attrs ->
-                ldapAdd ldap dn (list2ldm LdapModAdd attrs)
-            LDIFChange LdapModDelete _ ->
-                ldapDelete ldap dn
-            LDIFUpdate op attrs ->
-                ldapModify ldap dn (list2ldm op attrs)
-            _ -> error "Invalid LDIF operation."
+            LDIFEntry e -> ldapAdd ldap dn (snd (entry2add e))
+            LDIFAdd e -> ldapAdd ldap dn e
+            LDIFChange e -> ldapAdd ldap dn e
+            LDIFDelete -> ldapDelete ldap dn

@@ -69,7 +69,7 @@ testRelocPatterns = [
     , ("dc=foo", "dc=bar")
     ]
 
-testLDIF = LDIFEntry [
+testLDIF = LDIFEntry $ LDAPEntry "dc=hello,dc=world" [
       ("uid", ["foo"])
     , ("member", ["foo", "bar"])
     , ("description", ["foobar"])

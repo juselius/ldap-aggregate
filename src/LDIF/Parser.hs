@@ -123,7 +123,7 @@ pModSpec = do
 mkMod :: String -> [AttrSpec] -> LDAPMod
 mkMod modStr av
     | modStr == "add:" = rec LdapModAdd
-    | modStr == "delete:" = rec LdapModAdd
+    | modStr == "delete:" = rec LdapModDelete
     | modStr == "replace:" = rec LdapModReplace
     | otherwise = error $ "unexpected mod:" ++ modStr
     where

@@ -44,10 +44,18 @@ instance Show LDIF where
 
 instance Show LDIFRecord where
     show = \case
-        (LDIFEntry attrs) -> show attrs
-        (LDIFAdd attrs) -> show attrs
-        (LDIFChange attrs) -> show attrs
+        (LDIFEntry (LDAPEntry dn av)) ->
+            indent "dn: " ++ dn ++ "\n" ++ pprint av
+        (LDIFAdd mods) -> pprint' mods
+        (LDIFChange mods) -> pprint' mods
         _ -> ""
+        where
+            pprint = unlines . map (indent . printAttrs)
+            pprint' = unlines . map (indent . printAttrs')
+            indent x = "   " ++ x
+            printAttrs (a, v) = a ++ ": " ++ show v
+            printAttrs' (LDAPMod op a v) =
+                a ++ ": " ++ show v ++ "-> " ++ show op
 
 liftLdifRecord :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
 liftLdifRecord f l = case l of
@@ -80,3 +88,4 @@ record2entry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
         dlm2list = foldr (\(LDAPMod _ a v) x -> (a, v):x) [] e
 record2entry _ (LDIFEntry e) = Just e
 record2entry _ _ = Nothing
+

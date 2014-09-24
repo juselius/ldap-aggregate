@@ -33,9 +33,12 @@ flag test-properties
 library
     exposed-modules:
         Settings
+        LDIF
         LDIF.Parser
         LDIF.Preproc
         LDIF.Utils
+        LDIF.Diff
+        LDIF.Types
         LDAPRelay.Rewrite
         LDAPRelay.DirectoryTree
     build-depends:

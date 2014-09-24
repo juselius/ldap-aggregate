@@ -17,7 +17,9 @@ main = do
         doS = do
             ldap <- bindDIT "dc=source"
             ldif <- readLdif "./ldif/source.update.ldif"
-            modifyTreeFromLdifStr ldap ldif
+            let l = parseLdif ldif
+            print l
+            runLdif ldap l
             printDIT ldap "dc=source"
         readLdif f = withFile f ReadMode BS.hGetContents
 

@@ -30,6 +30,7 @@
 module LDIF.Diff (
       diffLDIF
     , diffRecord
+    , diffAttrs
 ) where
 
 import LDIF.Types
@@ -82,5 +83,3 @@ sift x = filter (not . flip elem x)
 isEntryIn :: Eq a => [(a, b)] -> (a, b) -> Bool
 isEntryIn l (e, _) = isJust $ lookup e l
 
---testAV1 = [("foo", ["foo1", "bar1"]), ("bar", ["foo2", "bar2"])]
---testAV2 = [("foo2", ["foo2", "bar2"])]

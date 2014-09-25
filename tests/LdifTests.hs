@@ -6,9 +6,8 @@ module LdifTests where
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Control.Arrow (first)
-import qualified Data.ByteString.Char8 as BS
 import LDIF
+import TestData
 
 ldifTests :: TestTree
 ldifTests = testGroup "LDIF unit tests" [
@@ -27,41 +26,5 @@ test5 = diffLDIF ldif2 ldif1 == ldiff2
 
 l1 = ("A", ldifDef1)
 l2 = ("B", ldifDef2)
-(ldif1, ldif2) = bimap1 (parseLdif . uncurry genLdifText) (l1, l2)
-
-ldifDef1 :: [AttrSpec]
-ldifDef1 = [
-      ("A", ["A1", "A2"])
-    , ("B", ["B1"])
-    ]
-
-ldifDef2 :: [AttrSpec]
-ldifDef2 = [
-      ("A", ["A1"])
-    ]
-
-ldiff1 :: [LDIF]
-ldiff1 = [
-      LDIF ("B", LDIFAdd [LDAPMod LdapModAdd "A" ["A1"]])
-    , LDIF ("A", LDIFDelete)
-    ]
-
-ldiff2 :: [LDIF]
-ldiff2 = [
-      LDIF ("A", LDIFAdd [ LDAPMod LdapModAdd "A" ["A1", "A2"]
-                         , LDAPMod LdapModAdd "B" ["B1"]
-                         ]
-           )
-    , LDIF ("B", LDIFDelete)
-    ]
-
-genLdifText :: String -> [AttrSpec] -> BS.ByteString
-genLdifText dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
-    where
-        attrs = foldl (\s (a, v) ->
-            s ++ a ++ ": " ++ v ++ "\n") "" (expanded av)
-        expanded = concat . map (uncurry zip . first repeat)
-
-genLdif :: String -> [AttrSpec] -> LDIF
-genLdif dn av = LDIF (dn, LDIFEntry $ LDAPEntry dn av)
+(ldif1, ldif2) = bimap1 (parseLdif . uncurry genLdif') (l1, l2)
 

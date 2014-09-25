@@ -1,13 +1,13 @@
 import Test.Tasty
 import qualified Test.Tasty.QuickCheck as QC
 import LdifTests
-import RelayTests
+import RewriteTests
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [properties, ldifTests, relayTests]
+tests = testGroup "Tests" [properties, ldifTests, rewriteTests]
 
 properties :: TestTree
 properties = testGroup "Properties"

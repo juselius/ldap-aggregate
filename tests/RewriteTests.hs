@@ -15,7 +15,7 @@ rewriteTests = testGroup "Rewrite unit tests" [
     , testCase "fitlerAttrs" $ test3 @?= True
     ]
 
-test1 = newDN == genLdif "dc=oof,dc=com" ldifDef1
+test1 = newDN == genLdif "dc=oof,dc=moc" ldifDef1
 test2 = False
 test3 = False
 

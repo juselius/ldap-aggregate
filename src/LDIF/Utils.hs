@@ -8,12 +8,15 @@ module LDIF.Utils (
       toAssocList
     , toHashMap
     , isUniqDN
+    , bimap1
 ) where
 
 import LDIF.Types
 import Data.List
 import Data.Maybe
 import qualified Data.HashMap.Lazy as HM
+import Control.Arrow ((***))
+import Control.Monad
 
 toAssocList :: [LDIF] -> [(DN, LDIFRecord)]
 toAssocList = map ldifEntry
@@ -28,4 +31,7 @@ isUniqDN xs = case hasDuplicates $ toAssocList xs of
     where
         hasDuplicates x = listToMaybe $
             nubBy (\(dn, _) (dn', _) -> dn == dn') x
+
+bimap1 :: (a -> b) -> (a, a) -> (b, b)
+bimap1 = join (***)
 

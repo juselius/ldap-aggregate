@@ -4,7 +4,6 @@ module LDAPRelay.DirectoryTree (
     , getDIT
     , askBindPw
     , runLdif
-    , parseLdif
     , LDAPEntry(..)
     , LDAPMod(..)
     ) where
@@ -12,7 +11,6 @@ module LDAPRelay.DirectoryTree (
 import System.IO
 import LDAP
 import LDIF
-import qualified Data.ByteString.Char8 as BS
 
 printDIT :: LDAP -> String -> IO ()
 printDIT ldap tree = do
@@ -43,9 +41,6 @@ askBindPw = do
     hSetEcho stdout True
     putStrLn ""
     return pw
-
-parseLdif :: BS.ByteString -> [LDIF]
-parseLdif ldif = either (error . show) id (parseLDIFStr [] ldif)
 
 runLdif :: LDAP -> [LDIF] -> IO ()
 runLdif ldap =

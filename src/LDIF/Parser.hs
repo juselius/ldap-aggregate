@@ -10,6 +10,7 @@
 
 module LDIF.Parser (
       parseLDIFStr
+    , parseLdif
     , LDIF(..)
     , LDIFRecord(..)
 ) where
@@ -22,6 +23,9 @@ import LDIF.Preproc
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
+
+parseLdif :: BC.ByteString -> [LDIF]
+parseLdif ldif = either (error . show) id (parseLDIFStr [] ldif)
 
 -- | Parse LDIF content
 parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]

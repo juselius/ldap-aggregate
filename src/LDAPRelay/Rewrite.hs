@@ -33,6 +33,8 @@ ldapStr2LdapMod str =
         toMod (dn, _) = (dn, [])
 
 rewriteDN :: [FromTo] -> LDIF -> LDIF
+rewriteDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
+    LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
 rewriteDN fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
 
 substDN :: [FromTo] -> String -> String

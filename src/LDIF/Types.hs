@@ -76,10 +76,8 @@ collectLdapEntries :: [LDIF] -> [LDIF]
 collectLdapEntries = filter (\(LDIF (_, e)) -> isLdapEntry e)
 
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
-entry2add :: LDAPEntry -> (DN, [LDAPMod])
-entry2add (LDAPEntry dn av) = (dn, modlist)
-    where
-        modlist = map (uncurry (LDAPMod LdapModAdd)) av
+entry2add :: LDAPEntry -> [LDAPMod]
+entry2add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
 
 -- | Convert LDIFAdd to LDAPEntry
 record2entry :: DN -> LDIFRecord -> Maybe LDAPEntry

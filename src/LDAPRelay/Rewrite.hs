@@ -28,7 +28,7 @@ ldapStr2LdapMod str =
     where
         ldif = extractEntries $ parseLDIFStr "" str
         extractEntries = either (error . show) (map ldifEntry)
-        toMod (dn, LDIFEntry x) = (dn, snd (entry2add x))
+        toMod (dn, LDIFEntry x) = (dn, entry2add x)
         toMod (dn, LDIFAdd x) = (dn, x)
         toMod (dn, _) = (dn, [])
 

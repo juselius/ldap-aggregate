@@ -97,7 +97,7 @@ pChangeAdd = do
     void $ string "add"
     pSEP
     entry <- pLdapEntry []
-    return . LDIFAdd $ snd (entry2add entry)
+    return . LDIFAdd $ entry2add entry
     where
 
 pChangeDel :: Parser LDIFRecord

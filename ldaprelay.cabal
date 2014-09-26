@@ -38,6 +38,7 @@ library
         LDIF.Preproc
         LDIF.Utils
         LDIF.Diff
+        LDIF.Apply
         LDIF.Types
         LDAPRelay.Rewrite
         LDAPRelay.DirectoryTree

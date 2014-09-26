@@ -8,4 +8,5 @@ module LDIF (
 import LDIF.Types
 import LDIF.Parser
 import LDIF.Diff
+import LDIF.Apply
 import LDIF.Utils

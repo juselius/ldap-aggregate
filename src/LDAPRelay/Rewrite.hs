@@ -34,17 +34,17 @@ ldapStr2LdapMod str =
 
 rewriteDN :: [FromTo] -> LDIF -> LDIF
 rewriteDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
-    LDIF (substDN dn fts, LDIFEntry (LDAPEntry (substDN dn' fts) x))
-rewriteDN fts (LDIF (dn, x)) = LDIF (substDN dn fts, x)
+    LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
+rewriteDN fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
 
-substDN :: String -> [FromTo] -> String
-substDN = foldl (\dn pat -> regexSub pat dn)
-    --case getFirstMatch of
-        --Just dn' -> dn'
-        --Nothing -> dn
-    --where
-        --getFirstMatch = listToMaybe . dropWhile (== dn) $
-            --map (flip regexSub dn) fts
+substDN :: [FromTo] -> String -> String
+substDN fts dn =
+    case getFirstMatch of
+        Just dn' -> dn'
+        Nothing -> dn
+    where
+        getFirstMatch = listToMaybe . dropWhile (== dn) $
+            map (flip regexSub dn) fts
 
 rewriteAttrList :: [(Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
 rewriteAttrList rwpat attrs = map (rewriteAttr rwpat) attrs

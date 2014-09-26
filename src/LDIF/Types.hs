@@ -14,6 +14,9 @@ module LDIF.Types (
     , liftLdifRecord
     , entry2add
     , record2entry
+    , ldif2mod
+    , toLDIF
+    , fromLDIF
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -57,6 +60,12 @@ instance Show LDIFRecord where
             printAttrs' (LDAPMod op a v) =
                 a ++ ": " ++ show v ++ "-> " ++ show op
 
+fromLDIF :: [LDIF] -> [(DN, LDIFRecord)]
+fromLDIF = map (\(LDIF x) -> x)
+
+toLDIF :: [(DN, LDIFRecord)] -> [LDIF]
+toLDIF = map LDIF
+
 liftLdifRecord :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
 liftLdifRecord f l = case l of
     (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry dn (f av)
@@ -74,6 +83,12 @@ isLdapEntry = \case
 
 collectLdapEntries :: [LDIF] -> [LDIF]
 collectLdapEntries = filter (\(LDIF (_, e)) -> isLdapEntry e)
+
+-- | Convert any LDIFEntry in LDIF to LDIFAdd
+ldif2mod :: LDIF -> LDIF
+ldif2mod (LDIF (dn, LDIFEntry e)) = LDIF (dn, LDIFAdd (entry2add e))
+ldif2mod l = l
+
 
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
 entry2add :: LDAPEntry -> [LDAPMod]

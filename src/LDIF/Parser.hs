@@ -133,7 +133,7 @@ mkMod modStr av
     where
         rec op = LDAPMod op attrName attrs
         attrName = fst . head $ av
-        attrs = concat . map snd $ av
+        attrs = concatMap snd av
 
 pDN :: Parser DN
 pDN = do

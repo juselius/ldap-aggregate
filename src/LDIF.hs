@@ -3,6 +3,7 @@ module LDIF (
     , module LDIF.Parser
     , module LDIF.Diff
     , module LDIF.Utils
+    , module LDIF.Apply
 ) where
 
 import LDIF.Types

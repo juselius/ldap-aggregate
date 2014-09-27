@@ -18,30 +18,34 @@ applyLDIF mods ldif = runIdentity . runErrorT $
         ops = fromLDIF $ map ldif2mod mods
 
 applyLDIF' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
-applyLDIF' mods ldif = runAdd >>= runMod >>= runDel
+applyLDIF' mods ldif = do
+    l1 <- runAdd ldif
+    l2 <- runMod l1
+    runDel l2
     where
-        runAdd = mapM (`addLdif` ldif) $ filter isAdd mods
-        runDel = delLdif (filter isDel mods)
-        runMod l = mapM (`modLdif` l) $ filter isMod mods
+        runAdd = runOp addLdif isAdd
+        runDel = runOp delLdif isDel
+        runMod = runOp modLdif isMod
+        runOp op p l = foldM op l $ filter p mods
 
-addLdif :: Ldif -> [Ldif] -> ApplyError Ldif
-addLdif (dn, a) l =
-    if isNothing $ lookup dn l
-    then return (dn, LDIFEntry (fromJust $ record2entry dn a))
-    else throwError $ "Entry already exists! " ++ dn
+addLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
+addLdif ldif (dn, a) =
+    if isNothing $ lookup dn ldif
+    then return $ (dn, LDIFEntry (fromJust $ record2entry dn a)):ldif
+    else throwError $ "Entry already exists, dn: " ++ dn
 
-delLdif :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
-delLdif d l = return . foldr rmMatchDn l $ d
-    where
-        rmMatchDn = deleteBy cmpfst
+delLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
+delLdif ldif m@(dn, a) =
+    if isJust $ lookup dn ldif
+    then return $ deleteBy cmpfst m ldif
+    else throwError $ "Entry does not exists, dn: " ++ dn
 
-cmpfst :: Eq a => (a, b) -> (a, b) -> Bool
-cmpfst (a, _) (b, _) = a == b
-
-modLdif :: Ldif -> [Ldif] -> ApplyError Ldif
-modLdif (dn, a) l =
-    case lookup dn l of
-        Just e -> applyEntry a e
+modLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
+modLdif ldif m@(dn, a) =
+    case lookup dn ldif of
+        Just e -> do
+            modfy <- applyEntry a e
+            return $ modfy : deleteBy cmpfst m ldif
         Nothing -> throwError $ "Entry does not exists! " ++ dn
 
 applyEntry :: LDIFRecord -> LDIFRecord -> ApplyError Ldif
@@ -78,3 +82,6 @@ isDel _ = False
 isMod :: Ldif -> Bool
 isMod (_, LDIFChange _) = True
 isMod _ = False
+
+cmpfst :: Eq a => (a, b) -> (a, b) -> Bool
+cmpfst (a, _) (b, _) = a == b

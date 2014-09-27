@@ -22,6 +22,8 @@ module LDIF.Types (
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 
+import Debug.Trace
+
 type DN = String
 type Attribute = String
 type Value = String
@@ -38,27 +40,33 @@ newtype LDIF = LDIF { ldifEntry :: (DN, LDIFRecord) } deriving (Eq)
 
 instance Show LDIF where
     show (LDIF (dn, rec)) = case rec of
-        x@(LDIFEntry _)  -> formatEntry "LDIFEntry -> " x
-        x@(LDIFChange _) -> formatEntry "LDIFChange -> " x
-        x@(LDIFAdd _)    -> formatEntry "LDIFAdd -> " x
-        LDIFDelete       -> "LDIFDelete -> " ++ dn
+        x@(LDIFEntry _)  -> formatEntry [] [] x
+        x@(LDIFChange _) -> formatEntry dn "modify" x
+        x@(LDIFAdd _)    -> formatEntry dn "add" x
+        x@LDIFDelete     -> formatEntry dn "delete" x
         where
-            formatEntry s x = s ++ "dn: " ++ dn ++ "\n" ++ show x
+            formatEntry dn' s x =
+                   (if null dn' then "" else "dn: " ++ dn' ++ "\n")
+                ++ (if null s then "" else "changetype: " ++ s ++ "\n")
+                ++ show x
 
 instance Show LDIFRecord where
     show = \case
-        (LDIFEntry (LDAPEntry dn av)) ->
-            indent "dn: " ++ dn ++ "\n" ++ pprint av
+        (LDIFEntry (LDAPEntry dn av)) -> "dn: " ++ dn ++ "\n"
+            ++ (unlines . map pprint $ av)
         (LDIFAdd mods) -> pprint' mods
         (LDIFChange mods) -> pprint' mods
         _ -> ""
         where
-            pprint = unlines . map (indent . printAttrs)
-            pprint' = unlines . map (indent . printAttrs')
-            indent x = "   " ++ x
-            printAttrs (a, v) = a ++ ": " ++ show v
-            printAttrs' (LDAPMod op a v) =
-                a ++ ": " ++ show v ++ "-> " ++ show op
+            pprint (a, v) = unlines . map printAttrs $ zip (repeat a) v
+            pprint' mods = unlines . map printAttrs' $ mods
+            printAttrs (a, v) = a ++ ": " ++ v
+            printAttrs' (LDAPMod op a v) = printOp op a
+                ++ (unlines . map printAttrs $ zip (repeat a) v)
+            printOp LdapModAdd a = "add: " ++ a ++ "\n"
+            printOp LdapModDelete a = "delete: " ++ a ++ "\n"
+            printOp LdapModReplace a = "replace: " ++ a ++ "\n"
+            printOp _ a = "unknown: " ++ a ++ "\n"
 
 fromLDIF :: [LDIF] -> [(DN, LDIFRecord)]
 fromLDIF = map (\(LDIF x) -> x)

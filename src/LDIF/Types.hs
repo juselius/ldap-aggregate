@@ -53,12 +53,12 @@ instance Show LDIF where
 instance Show LDIFRecord where
     show = \case
         (LDIFEntry (LDAPEntry dn av)) -> "dn: " ++ dn ++ "\n"
-            ++ (unlines . map pprint $ av)
+            ++ (unlines . concatMap pprint $ av)
         (LDIFAdd mods) -> pprint' mods
         (LDIFChange mods) -> pprint' mods
         _ -> ""
         where
-            pprint (a, v) = unlines . map printAttrs $ zip (repeat a) v
+            pprint (a, v) = map (curry printAttrs a) v
             pprint' mods = unlines . map printAttrs' $ mods
             printAttrs (a, v) = a ++ ": " ++ v
             printAttrs' (LDAPMod op a v) = printOp op a

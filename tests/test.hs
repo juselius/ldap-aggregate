@@ -1,20 +1,22 @@
 import Test.Tasty
-import qualified Test.Tasty.QuickCheck as QC
 import LdifTests
 import RewriteTests
+import TestData
+import LDIF
+import qualified Data.ByteString.Char8 as BS
 
 main :: IO ()
 main = do
-    foop
-   --defaultMain tests
+    --a' <- sampleLdif
+    --let
+        --a = map entryStr a'
+        --l = parseLdif $ BS.pack (unlines a)
+        --al = zip a l
+    --mapM_ pruit al
+    --writeFile "out1" $ unlines a
+    --writeFile "out2" $ unlines $ map show l
+    --print $ unlines a == (unlines $ map show l)
+    defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [properties, ldifTests, rewriteTests]
-
-properties :: TestTree
-properties = testGroup "Properties"
-    [ QC.testProperty "example 1" xmpl ]
-
-xmpl :: [Char] -> Bool
-xmpl s = reverse (reverse s) == s
-
+tests = testGroup "Tests" [ldifTests, rewriteTests]

@@ -22,8 +22,6 @@ module LDIF.Types (
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 
-import Debug.Trace
-
 type DN = String
 type Attribute = String
 type Value = String
@@ -54,15 +52,16 @@ instance Show LDIFRecord where
     show = \case
         (LDIFEntry (LDAPEntry dn av)) -> "dn: " ++ dn ++ "\n"
             ++ (unlines . concatMap pprint $ av)
-        (LDIFAdd mods) -> pprint' mods
-        (LDIFChange mods) -> pprint' mods
+        (LDIFAdd mods) -> unlines . concatMap pprintAdd $ mods
+        (LDIFChange mods) -> pprintChange mods
         _ -> ""
         where
             pprint (a, v) = map (curry printAttrs a) v
-            pprint' mods = unlines . map printAttrs' $ mods
+            pprintAdd (LDAPMod _ a v) = map (curry printAttrs a) v
+            pprintChange mods = unlines . map printMod $ mods
             printAttrs (a, v) = a ++ ": " ++ v
-            printAttrs' (LDAPMod op a v) = printOp op a
-                ++ (unlines . map printAttrs $ zip (repeat a) v)
+            printMod (LDAPMod op a v) = printOp op a
+                ++ (unlines . map printAttrs $ zip (repeat a) v) ++ "-"
             printOp LdapModAdd a = "add: " ++ a ++ "\n"
             printOp LdapModDelete a = "delete: " ++ a ++ "\n"
             printOp LdapModReplace a = "replace: " ++ a ++ "\n"

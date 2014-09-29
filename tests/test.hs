@@ -4,7 +4,9 @@ import LdifTests
 import RewriteTests
 
 main :: IO ()
-main = defaultMain tests
+main = do
+    foop
+   --defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, ldifTests, rewriteTests]

@@ -1,11 +1,9 @@
---module LdifTests (
-    --ldifTests
---) where
-
 module LdifTests where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
+--import Test.QuickCheck
 import LDIF
 import TestData
 
@@ -28,3 +26,11 @@ l1 = ("A", ldifDef1)
 l2 = ("B", ldifDef2)
 (ldif1, ldif2) = bimap1 (parseLdif . uncurry genLdif') (l1, l2)
 
+foop = sample (arbitrary :: Gen LdifEntryStr)
+
+newtype LdifEntryStr = LdifEntryStr String deriving (Show)
+
+instance Arbitrary LdifEntryStr where
+    arbitrary = do
+        e <- elements ["cn=apa,dc=source", "cn=gorilla,dc=target"] :: Gen String
+        return $ LdifEntryStr $ "dn: " ++ e

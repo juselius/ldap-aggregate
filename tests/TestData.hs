@@ -18,14 +18,25 @@ genLdif' dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
 genLdif :: String -> [AttrSpec] -> LDIF
 genLdif dn av = LDIF (dn, LDIFEntry $ LDAPEntry dn av)
 
+newtype LdifStr = LdifStr { ldifStr :: String } deriving (Show)
 newtype LdifEntryStr = LdifEntryStr { entryStr :: String } deriving (Show)
 
-instance Arbitrary LdifEntryStr where
+instance Arbitrary LdifStr where
     arbitrary = do
         dn <- genDN
         ch <- genChangeType
         attrs <- genAttrs dn ch
-        return $ LdifEntryStr (init . unlines . filter (not . null) $ [dn, ch, attrs])
+        return $ LdifStr $ stringify [dn, ch, attrs]
+        where
+            stringify = init . unlines . filter (not . null)
+
+instance Arbitrary LdifEntryStr where
+    arbitrary = do
+        dn <- genDN
+        attrs <- genAttrs dn ""
+        return $ LdifEntryStr $ stringify [dn, attrs]
+        where
+            stringify = init . unlines . filter (not . null)
 
 genDN :: Gen String
 genDN = do
@@ -107,5 +118,5 @@ ldiff2 = [
     , LDIF ("B", LDIFDelete)
     ]
 
-sampleLdif = sample' (arbitrary :: Gen LdifEntryStr)
+sampleLdif = sample' (arbitrary :: Gen LdifStr)
 

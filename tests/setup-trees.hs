@@ -14,11 +14,13 @@ main = do
         _ -> doS >> doT
     where
         doS = do
-            source <- bindDIT "dc=source"
-            populateSource source
-            printDIT source "dc=source"
+            ldap <- bindDIT "ldap://localhost:389"
+                "cn=admin,dc=source" "secret"
+            populateSource ldap
+            printDIT ldap "dc=source"
         doT = do
-            target <- bindDIT "dc=target"
-            populateTarget target
-            printDIT target "dc=target"
+            ldap <- bindDIT "ldap://localhost:389"
+                "cn=admin,dc=target" "secret"
+            populateTarget ldap
+            printDIT ldap "dc=target"
 

@@ -27,13 +27,6 @@ bindDIT uri binddn pw = do
     ldapSimpleBind ldap binddn pw
     return ldap
 
-bindDIT' :: String -> IO LDAP
-bindDIT' tree = do
-    --pw <- askBindPw
-    ldap <- ldapInitialize "ldap://localhost:389"
-    ldapSimpleBind ldap ("cn=admin," ++ tree) "secret"
-    return ldap
-
 getDIT :: LDAP -> String -> IO [LDAPEntry]
 getDIT ldap tree =
     ldapSearch ldap (Just tree) LdapScopeSubtree Nothing LDAPAllUserAttrs False
@@ -53,7 +46,7 @@ runLdif ldap =
     mapM_ runMod
     where
         runMod (LDIF (dn, entry)) = case entry of
-            LDIFEntry e -> ldapAdd ldap dn (entry2add e)
+            LDIFEntry e -> ldapAdd ldap dn (ldapEntry2Add e)
             LDIFAdd e -> ldapAdd ldap dn e
             LDIFChange e -> ldapModify ldap dn e
             LDIFDelete -> ldapDelete ldap dn

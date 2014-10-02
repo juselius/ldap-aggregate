@@ -9,7 +9,7 @@
 {-# LANGUAGE OverloadedStrings, PackageImports #-}
 
 module LDIF.Parser (
-      parseLDIFStr
+      parseLdifStr
     , parseLdif
     , LDIF(..)
     , LDIFRecord(..)
@@ -25,11 +25,11 @@ import "parsec" Text.Parsec.ByteString
 import qualified Data.ByteString.Char8 as BC
 
 parseLdif :: BC.ByteString -> [LDIF]
-parseLdif ldif = either (error . show) id (parseLDIFStr [] ldif)
+parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
 -- | Parse LDIF content
-parseLDIFStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
-parseLDIFStr name xs = case eldif of
+parseLdifStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
+parseLdifStr name xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
     where
@@ -97,7 +97,7 @@ pChangeAdd = do
     void $ string "add"
     pSEP
     entry <- pLdapEntry []
-    return . LDIFAdd $ entry2add entry
+    return . LDIFAdd $ ldapEntry2Add entry
     where
 
 pChangeDel :: Parser LDIFRecord

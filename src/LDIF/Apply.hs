@@ -1,5 +1,5 @@
 module LDIF.Apply (
-    applyLDIF
+    applyLdif
 ) where
 
 import LDIF.Types
@@ -11,14 +11,14 @@ import Control.Monad.Identity
 type ApplyError = ErrorT String Identity
 type Ldif = (DN, LDIFRecord)
 
-applyLDIF :: [LDIF] -> [LDIF] -> Either String [LDIF]
-applyLDIF mods ldif = runIdentity . runErrorT $
-    liftM toLDIF $ applyLDIF' ops (fromLDIF ldif)
+applyLdif :: [LDIF] -> [LDIF] -> Either String [LDIF]
+applyLdif mods ldif = runIdentity . runErrorT $
+    liftM toLdif $ applyLdif' ops (fromLdif ldif)
     where
-        ops = fromLDIF $ map ldif2mod mods
+        ops = fromLdif $ map ldifEntry2Add mods
 
-applyLDIF' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
-applyLDIF' mods ldif = do
+applyLdif' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
+applyLdif' mods ldif = do
     l1 <- runAdd ldif
     l2 <- runMod l1
     runDel l2
@@ -31,11 +31,11 @@ applyLDIF' mods ldif = do
 addLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
 addLdif ldif (dn, a) =
     if isNothing $ lookup dn ldif
-    then return $ (dn, LDIFEntry (fromJust $ record2entry dn a)):ldif
+    then return $ (dn, LDIFEntry (fromJust $ ldifRecord2Entry dn a)):ldif
     else throwError $ "Entry already exists, dn: " ++ dn
 
 delLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
-delLdif ldif m@(dn, a) =
+delLdif ldif m@(dn, _) =
     if isJust $ lookup dn ldif
     then return $ deleteBy cmpfst m ldif
     else throwError $ "Entry does not exists, dn: " ++ dn

@@ -36,10 +36,10 @@ syncDirs conf = do
     rwDN <- getFromTo conf "rewrite.dn"
     rwAttrs <- getFromTo conf "rewrite.attr"
     sourceLdif <- getDir sc
-        >>= filterDN ignDN
-        >>= filterAttrs ignAttrs
-        >>= rewriteDN rwDN
-        >>= rewriteAttrs rwDN
+        -- >>= filterDN ignDN
+        -- >>= filterAttrs ignAttrs
+        -- >>= rewriteDN rwDN
+        -- >>= rewriteAttrs rwDN
     targetLdif <- getDir tc
     updateDIT tc targetLdif $ diffLDIF sourceLdif targetLdif
     where
@@ -63,7 +63,7 @@ getDir conf = do
     ldap <- bindLdap conf
     base   <- fromJust <$> C.lookup conf "base"
     ldif <- getDIT ldap base
-    return $ map ldap2ldif ldif
+    return $ map ldapEntry2LDIF ldif
 
 bindLdap :: Config -> IO LDAP
 bindLdap conf = do
@@ -75,9 +75,7 @@ bindLdap conf = do
 waitForLine :: Handle -> IO BS.ByteString
 waitForLine inh = do
     avail <- hWaitForInput inh 50000
-    if avail
-    then waitForLine inh
-    else BS.hGetLine inh
+    if avail then waitForLine inh else BS.hGetLine inh
 
 matchEmptyLine :: BS.ByteString
 matchEmptyLine = "^ *$"
@@ -104,7 +102,7 @@ runUpdates :: LDAP -> Handle ->  IO ()
 runUpdates ldap inh = forever $ do
     ldata <- readAuditlogBlock inh []
     putStrLn $ replicate 50 '-'
-    case parseLDIFStr [] (snd ldata) of
+    case parseLdifStr [] (snd ldata) of
         Left err -> print err
         Right ldif -> do
             print ldif

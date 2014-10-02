@@ -28,9 +28,9 @@ ldapStr2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
 ldapStr2LdapMod str =
         map toMod ldif
     where
-        ldif = extractEntries $ parseLDIFStr "" str
+        ldif = extractEntries $ parseLdifStr "" str
         extractEntries = either (error . show) (map ldifEntry)
-        toMod (dn, LDIFEntry x) = (dn, entry2add x)
+        toMod (dn, LDIFEntry x) = (dn, ldapEntry2Add x)
         toMod (dn, LDIFAdd x) = (dn, x)
         toMod (dn, _) = (dn, [])
 

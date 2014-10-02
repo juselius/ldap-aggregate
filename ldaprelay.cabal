@@ -67,11 +67,13 @@ executable ldaprelay.bin
           base
         , mtl
         , regex-posix
+        , regexpr
         , ConfigFile
         , bytestring
         , ldif
         , parsec
         , LDAP
+        , unordered-containers
         , configurator
     other-modules: Paths_ldaprelay
     hs-source-dirs: src

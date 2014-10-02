@@ -24,7 +24,7 @@ import LDAPRelay.DirectoryTree
 
 clearTree' :: String -> IO ()
 clearTree' tree = do
-    ldap <- bindDIT tree
+    ldap <- bindDIT "ldap://localhost:389" ("cn=admin" ++ tree) "secret"
     printDIT ldap tree
     clearTree ldap tree
     printDIT ldap tree

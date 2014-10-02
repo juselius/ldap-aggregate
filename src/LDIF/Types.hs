@@ -12,12 +12,12 @@ module LDIF.Types (
     , isLdapEntry
     , collectLdapEntries
     , liftLdifRecord
-    , entry2add
-    , record2entry
-    , ldif2mod
-    , ldap2ldif
-    , toLDIF
-    , fromLDIF
+    , ldapEntry2Add
+    , ldifEntry2Add
+    , ldapEntry2LDIF
+    , ldifRecord2Entry
+    , toLdif
+    , fromLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -68,11 +68,11 @@ instance Show LDIFRecord where
             printOp LdapModReplace a = "replace: " ++ a ++ "\n"
             printOp _ a = "unknown: " ++ a ++ "\n"
 
-fromLDIF :: [LDIF] -> [(DN, LDIFRecord)]
-fromLDIF = map (\(LDIF x) -> x)
+fromLdif :: [LDIF] -> [(DN, LDIFRecord)]
+fromLdif = map (\(LDIF x) -> x)
 
-toLDIF :: [(DN, LDIFRecord)] -> [LDIF]
-toLDIF = map LDIF
+toLdif :: [(DN, LDIFRecord)] -> [LDIF]
+toLdif = map LDIF
 
 liftLdifRecord :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
 liftLdifRecord f l = case l of
@@ -93,23 +93,22 @@ collectLdapEntries :: [LDIF] -> [LDIF]
 collectLdapEntries = filter (\(LDIF (_, e)) -> isLdapEntry e)
 
 -- | Convert any LDIFEntry in LDIF to LDIFAdd
-ldif2mod :: LDIF -> LDIF
-ldif2mod (LDIF (dn, LDIFEntry e)) = LDIF (dn, LDIFAdd (entry2add e))
-ldif2mod l = l
-
+ldifEntry2Add :: LDIF -> LDIF
+ldifEntry2Add (LDIF (dn, LDIFEntry e)) = LDIF (dn, LDIFAdd (ldapEntry2Add e))
+ldifEntry2Add l = l
 
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
-entry2add :: LDAPEntry -> [LDAPMod]
-entry2add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
+ldapEntry2Add :: LDAPEntry -> [LDAPMod]
+ldapEntry2Add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
 
-ldap2ldif :: LDAPEntry -> LDIF
-ldap2ldif e@(LDAPEntry dn _) = LDIF (dn, LDIFEntry e)
+ldapEntry2LDIF :: LDAPEntry -> LDIF
+ldapEntry2LDIF e@(LDAPEntry dn _) = LDIF (dn, LDIFEntry e)
 
 -- | Convert LDIFAdd to LDAPEntry
-record2entry :: DN -> LDIFRecord -> Maybe LDAPEntry
-record2entry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
+ldifRecord2Entry :: DN -> LDIFRecord -> Maybe LDAPEntry
+ldifRecord2Entry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
     where
         dlm2list = foldr (\(LDAPMod _ a v) x -> (a, v):x) [] e
-record2entry _ (LDIFEntry e) = Just e
-record2entry _ _ = Nothing
+ldifRecord2Entry _ (LDIFEntry e) = Just e
+ldifRecord2Entry _ _ = Nothing
 

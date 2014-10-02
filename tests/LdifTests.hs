@@ -35,7 +35,7 @@ ldif_diff_is_diff (LdifEntryStr s1, LdifEntryStr s2) =
 
 ldif_apply_diff_idempotent :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldif_apply_diff_idempotent (LdifEntryStr s1, LdifEntryStr s2) =
-        either (const False) (== l1) $ applyLDIF dl l2
+        either (const False) (== l1) $ applyLdif dl l2
         where
             l1 = parseLdif $ BS.pack s1
             l2 = parseLdif $ BS.pack s2

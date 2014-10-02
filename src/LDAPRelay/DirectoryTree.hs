@@ -21,8 +21,14 @@ printDIT ldap tree = do
         prettify s e@(LDAPEntry dn _) =
             show (LDIF (dn, LDIFEntry e)) ++ "\n" ++ s
 
-bindDIT :: String -> IO LDAP
-bindDIT tree = do
+bindDIT :: String -> String -> String -> IO LDAP
+bindDIT uri binddn pw = do
+    ldap <- ldapInitialize uri
+    ldapSimpleBind ldap binddn pw
+    return ldap
+
+bindDIT' :: String -> IO LDAP
+bindDIT' tree = do
     --pw <- askBindPw
     ldap <- ldapInitialize "ldap://localhost:389"
     ldapSimpleBind ldap ("cn=admin," ++ tree) "secret"

@@ -5,9 +5,11 @@
 module LDAPRelay.Rewrite (
       rewriteDN
     , rewriteAttrs
+    , filterDN
     , filterAttrs
     , filterEntry
     , ldapStr2LdapMod
+    , FromTo
 ) where
 
 import LDAP
@@ -57,6 +59,11 @@ rewriteAttr rwpat x@(attr, vals) = maybe x rewrite (lookup attr rwpat)
 rewriteAttrs :: [(Attribute, FromTo)] -> LDIF -> LDIF
 rewriteAttrs afts (LDIF l) =
     LDIF $ second (liftLdifRecord (rewriteAttrList afts)) l
+
+filterDN :: [FromTo] -> LDIF -> LDIF
+filterDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) = error ""
+    --LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
+filterDN fts (LDIF (dn, x)) = error "" -- LDIF (substDN fts dn, x)
 
 filterAttrs :: [Attribute] -> [AttrSpec] -> [AttrSpec]
 filterAttrs attrl = filter (not . flip elem attrl . fst)

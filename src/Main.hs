@@ -4,29 +4,80 @@ module Main where
 
 import System.IO
 import Control.Concurrent
-{-import Text.LDIF.Preproc-}
-import LDIF.Parser
-import qualified Data.ByteString.Char8 as BS
+import LDIF
+import LDAP
+import LDAPRelay
 import Text.Regex.Posix
-
-import Settings
+--import Settings
+import Data.Maybe
+import Control.Applicative ((<$>))
+import Control.Monad (forM_, forever)
+import Data.Configurator as C
+import Data.Configurator.Types as C
+import qualified Data.ByteString.Char8 as BS
 
 main :: IO ()
 main = do
-    settings <- readSettings "ldaprelay.cfg"
-    inh <- openFile (auditlog settings) ReadMode
-    processData inh
+    conf <- C.load [Required "examples/ldaprelay.cfg"]
+    auditlog <- C.lookupDefault "examples/auditlog.ldif" conf "auditlog"
+    dirs <- fromJust <$> C.lookup conf "directories"
+    forM_ dirs $ syncDirs . flip C.subconfig conf
+    inh <- openFile auditlog ReadMode
+    hSeek inh SeekFromEnd 0
+    ldap <- bindLdap $ C.subconfig "target" conf
+    runUpdates ldap inh
     hClose inh
     BS.putStrLn "done."
 
+syncDirs :: Config -> IO ()
+syncDirs conf = do
+    ignDN <- getFromTo conf "ignore.dn"
+    ignAttrs <- getFromTo conf "ignore.attr"
+    rwDN <- getFromTo conf "rewrite.dn"
+    rwAttrs <- getFromTo conf "rewrite.attr"
+    sourceLdif <- getDir sc
+        >>= filterDN ignDN
+        >>= filterAttrs ignAttrs
+        >>= rewriteDN rwDN
+        >>= rewriteAttrs rwDN
+    targetLdif <- getDir tc
+    updateDIT tc targetLdif $ diffLDIF sourceLdif targetLdif
+    where
+        sc = C.subconfig "source" conf
+        tc = C.subconfig "target" conf
+
+getFromTo :: Config -> Name -> IO [FromTo]
+getFromTo conf x = do
+    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
+    return $ map (\[a,b] -> (a,b)) ft
+
+updateDIT :: Config -> [LDIF] -> [LDIF] -> IO ()
+updateDIT conf s t = do
+    ldap <- bindLdap conf
+    runLdif ldap diff
+    where
+        diff = diffLDIF t s
+
+getDir :: Config -> IO [LDIF]
+getDir conf = do
+    ldap <- bindLdap conf
+    base   <- fromJust <$> C.lookup conf "base"
+    ldif <- getDIT ldap base
+    return $ map ldap2ldif ldif
+
+bindLdap :: Config -> IO LDAP
+bindLdap conf = do
+    uri    <- fromJust <$> C.lookup conf "uri"
+    binddn <- fromJust <$> C.lookup conf "binddn"
+    passwd <- fromJust <$> C.lookup conf "passwd"
+    bindDIT uri binddn passwd
+
 waitForLine :: Handle -> IO BS.ByteString
 waitForLine inh = do
-    atEof <- hIsEOF inh
-    if atEof
-        then do
-            threadDelay 50000
-            waitForLine inh
-        else BS.hGetLine inh
+    avail <- hWaitForInput inh 50000
+    if avail
+    then waitForLine inh
+    else BS.hGetLine inh
 
 matchEmptyLine :: BS.ByteString
 matchEmptyLine = "^ *$"
@@ -46,15 +97,16 @@ readAuditlogBlock inh acc = do
         then readAuditlogBlock inh acc
         else let (_, _, _, hits) = line =~ matchEndRecord :: Match in
             if not $ null hits
-                then return $ (read (BS.unpack $ hits !! 1), BS.unlines acc)
+                then return (read (BS.unpack $ hits !! 1), BS.unlines acc)
                 else readAuditlogBlock inh (acc ++ [line])
 
-processData :: Handle ->  IO ()
-processData inh = do
+runUpdates :: LDAP -> Handle ->  IO ()
+runUpdates ldap inh = forever $ do
     ldata <- readAuditlogBlock inh []
     putStrLn $ replicate 50 '-'
-    case parseLDIFStr "relay" (snd ldata) of
+    case parseLDIFStr [] (snd ldata) of
         Left err -> print err
-        Right ldif -> print ldif
-    processData inh
+        Right ldif -> do
+            print ldif
+            runLdif ldap ldif
 

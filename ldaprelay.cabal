@@ -32,7 +32,6 @@ flag test-properties
 
 library
     exposed-modules:
-        Settings
         LDIF
         LDIF.Parser
         LDIF.Preproc
@@ -73,6 +72,7 @@ executable ldaprelay.bin
         , ldif
         , parsec
         , LDAP
+        , configurator
     other-modules: Paths_ldaprelay
     hs-source-dirs: src
     ghc-options:
@@ -86,9 +86,9 @@ executable ldaprelay.bin
 test-suite tests
     type: exitcode-stdio-1.0
     main-is: test.hs
-    ghc-options: 
+    ghc-options:
         -w -threaded -rtsopts -with-rtsopts=-N
-        -fhpc 
+        -fhpc
     hs-source-dirs: tests, src
     if !flag(test-properties)
         buildable: False

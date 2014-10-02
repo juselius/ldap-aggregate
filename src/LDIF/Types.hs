@@ -15,6 +15,7 @@ module LDIF.Types (
     , entry2add
     , record2entry
     , ldif2mod
+    , ldap2ldif
     , toLDIF
     , fromLDIF
 ) where
@@ -100,6 +101,9 @@ ldif2mod l = l
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
 entry2add :: LDAPEntry -> [LDAPMod]
 entry2add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
+
+ldap2ldif :: LDAPEntry -> LDIF
+ldap2ldif e@(LDAPEntry dn _) = LDIF (dn, LDIFEntry e)
 
 -- | Convert LDIFAdd to LDAPEntry
 record2entry :: DN -> LDIFRecord -> Maybe LDAPEntry

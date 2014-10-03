@@ -4,26 +4,25 @@
 
 module LDAPRelay.Rewrite (
       rewriteDN
+    , rewriteDN'
+    , rewriteAttrs'
     , rewriteAttrs
-    , ldapStr2LdapMod
-    , FromTo
 ) where
 
 import LDAP
 import LDIF
-import Text.Regex.Posix
+import LDAPRelay.Types
 import Data.Maybe
-import qualified Data.ByteString.Char8 as BS
 import qualified Text.RegexPR as PR
 import Control.Arrow (second)
 
-type RegexStr = String
-type FromTo = (RegexStr, RegexStr)
+rewriteDN :: [FromTo] -> [LDIF] -> [LDIF]
+rewriteDN fts ldif = map (rewriteDN' fts) ldif
 
-rewriteDN :: [FromTo] -> LDIF -> LDIF
-rewriteDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
+rewriteDN' :: [FromTo] -> LDIF -> LDIF
+rewriteDN' fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
     LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
-rewriteDN fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
+rewriteDN' fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
 
 substDN :: [FromTo] -> String -> String
 substDN fts dn =
@@ -34,11 +33,8 @@ substDN fts dn =
         getFirstMatch = listToMaybe . dropWhile (== dn) $
             map (flip regexSub dn) fts
 
-rewriteLdifAttrs :: [(Attribute, FromTo)] -> [LDIF] -> [LDIF]
-rewriteLdifAttrs afts l = map (rewriteAttrs afts) l
-
-filterLdifEntry :: (DN, [Attribute]) -> [LDIF] -> [LDIF]
-filterLdifEntry (dnFilter, attrs) (LDIF x@(dn, _)) =
+rewriteAttrs :: [(Attribute, FromTo)] -> [LDIF] -> [LDIF]
+rewriteAttrs afts l = map (rewriteAttrs' afts) l
 
 rewriteAttrList :: [(Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
 rewriteAttrList rwpat attrs = map (rewriteAttr rwpat) attrs
@@ -48,23 +44,9 @@ rewriteAttr rwpat x@(attr, vals) = maybe x rewrite (lookup attr rwpat)
     where
         rewrite subst = (attr, regexSubs subst vals)
 
-rewriteAttrs :: [(Attribute, FromTo)] -> LDIF -> LDIF
-rewriteAttrs afts (LDIF l) =
+rewriteAttrs' :: [(Attribute, FromTo)] -> LDIF -> LDIF
+rewriteAttrs' afts (LDIF l) =
     LDIF $ second (liftLdifRecord (rewriteAttrList afts)) l
-
-filterDN :: [FromTo] -> LDIF -> LDIF
-filterDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) = error ""
-    --LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
-filterDN fts (LDIF (dn, x)) = error "" -- LDIF (substDN fts dn, x)
-
-filterAttrs :: [Attribute] -> [AttrSpec] -> [AttrSpec]
-filterAttrs attrl = filter (not . flip elem attrl . fst)
-
-filterEntry :: (DN, [Attribute]) -> LDIF -> LDIF
-filterEntry (dnFilter, attrs) (LDIF x@(dn, _)) =
-    if dn =~ dnFilter
-    then LDIF $ second (liftLdifRecord (filterAttrs attrs)) x
-    else LDIF x
 
 regexSub :: FromTo -> Value -> Value
 regexSub (src, dst) = PR.subRegexPR src dst

@@ -5,9 +5,6 @@
 module LDAPRelay.Rewrite (
       rewriteDN
     , rewriteAttrs
-    , filterDN
-    , filterAttrs
-    , filterEntry
     , ldapStr2LdapMod
     , FromTo
 ) where
@@ -23,17 +20,6 @@ import Control.Arrow (second)
 type RegexStr = String
 type FromTo = (RegexStr, RegexStr)
 
--- | Convert a LDIF string of LDAP search results to LDAPMod for add
-ldapStr2LdapMod :: BS.ByteString -> [(String, [LDAPMod])]
-ldapStr2LdapMod str =
-        map toMod ldif
-    where
-        ldif = extractEntries $ parseLdifStr "" str
-        extractEntries = either (error . show) (map ldifEntry)
-        toMod (dn, LDIFEntry x) = (dn, ldapEntry2Add x)
-        toMod (dn, LDIFAdd x) = (dn, x)
-        toMod (dn, _) = (dn, [])
-
 rewriteDN :: [FromTo] -> LDIF -> LDIF
 rewriteDN fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
     LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
@@ -47,6 +33,12 @@ substDN fts dn =
     where
         getFirstMatch = listToMaybe . dropWhile (== dn) $
             map (flip regexSub dn) fts
+
+rewriteLdifAttrs :: [(Attribute, FromTo)] -> [LDIF] -> [LDIF]
+rewriteLdifAttrs afts l = map (rewriteAttrs afts) l
+
+filterLdifEntry :: (DN, [Attribute]) -> [LDIF] -> [LDIF]
+filterLdifEntry (dnFilter, attrs) (LDIF x@(dn, _)) =
 
 rewriteAttrList :: [(Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
 rewriteAttrList rwpat attrs = map (rewriteAttr rwpat) attrs

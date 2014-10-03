@@ -45,7 +45,7 @@ populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode BS.hGetContents
     lpops <- withFile "./ldif/source.populate.ldif" ReadMode BS.hGetContents
     let commit x = mapM_ (\(dn, attrs) ->
-            ldapAdd ldap dn attrs) (ldapStr2LdapMod x)
+            ldapAdd ldap dn attrs) (ldifStr2LdapAdd x)
     commit ltree
     commit lpops
 

@@ -8,10 +8,10 @@ import LDIF
 import LDAP
 import LDAPRelay
 import Text.Regex.Posix
---import Settings
 import Data.Maybe
 import Control.Applicative ((<$>))
 import Control.Monad (forM_, forever)
+import Control.Arrow ((>>>))
 import Data.Configurator as C
 import Data.Configurator.Types as C
 import qualified Data.ByteString.Char8 as BS
@@ -20,7 +20,7 @@ main :: IO ()
 main = do
     conf <- C.load [Required "examples/ldaprelay.cfg"]
     auditlog <- C.lookupDefault "examples/auditlog.ldif" conf "auditlog"
-    dirs <- fromJust <$> C.lookup conf "directories"
+    dirs <- fromJust <$> C.lookup conf "source"
     forM_ dirs $ syncDirs . flip C.subconfig conf
     inh <- openFile auditlog ReadMode
     hSeek inh SeekFromEnd 0
@@ -35,19 +35,30 @@ syncDirs conf = do
     ignAttrs <- getFromTo conf "ignore.attr"
     rwDN <- getFromTo conf "rewrite.dn"
     rwAttrs <- getFromTo conf "rewrite.attr"
-    sourceLdif <- getDir sc
-        -- >>= filterDN ignDN
-        -- >>= filterAttrs ignAttrs
-        -- >>= rewriteDN rwDN
-        -- >>= rewriteAttrs rwDN
-    targetLdif <- getDir tc
-    updateDIT tc targetLdif $ diffLDIF sourceLdif targetLdif
+    sourceTree <- getDir sc
+    targetTree <- getDir tc
+    let shapeS = id
+            >>> filterDN ignDN
+            >>> filterEntries ignAttrs
+            >>> rewriteDN rwDN
+            >>> rewriteAttrs rwAttrs
+        shapeT = id
+            >>> filterDN ignDN
+            >>> filterEntries ignAttrs
+        ldifS = shapeS sourceTree
+        ldifT = shapeT targetTree
+    updateDIT tc ldifT $ diffLDIF ldifS ldifT
     where
         sc = C.subconfig "source" conf
         tc = C.subconfig "target" conf
 
 getFromTo :: Config -> Name -> IO [FromTo]
 getFromTo conf x = do
+    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
+    return $ map (\[a,b] -> (a,b)) ft
+
+getAttrFromTo :: Config -> Name -> IO [FromTo]
+getAttrFromTo conf x = do
     ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
     return $ map (\[a,b] -> (a,b)) ft
 

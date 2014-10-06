@@ -16,18 +16,31 @@ import Control.Arrow (second)
 import Data.Maybe (maybe)
 
 filterLdif :: [Filter] -> [LDIF] -> [LDIF]
-filterLdif fs ldif = foldr filterMatching [] ldif
+filterLdif fs ldif = map (filterLDIF fs) ldif'
     where
-        filterMatching l acc = maybe acc (:acc) $ runFilters fs l
+        ldif' = filterDN fs ldif
 
-runFilters :: [Filter] -> LDIF -> Maybe LDIF
-runFilters fs l = foldl (runFilter l) fs
-
-filterDN :: RegexStr -> LDIF -> LDIF
-filterDN rex ldif = foldr filterMatching [] ldif
+filterDN :: [Filter] -> [LDIF] -> [LDIF]
+filterDN fs ldif = filter (\(LDIF (dn, _)) -> any (dnFilter dn) fs) ldif
     where
-        filterMatching x@(LDIF (dn, _)) acc =
-            if rex =~ dn then x:acc else acc
+        dnFilter dn' (FilterDn f) = f =~ dn'
+        dnFilter _ _ = False
+
+filterLDIF :: [Filter] -> LDIF -> LDIF
+filterLDIF fs l@(LDIF (dn, x)) = case x of
+    LDIFEntry (LDAPEntry dn' av) ->
+        LDIF (dn, LDIFEntry (LDAPEntry dn' (filterAV av)))
+    LDIFAdd lm -> LDIF (dn, (LDIFAdd filterLM lm))
+    LDIFChange lm -> LDIF (dn, (LDIFChange filterLM lm))
+    LDIFDelete -> l
+    where
+        filterAV av = filter (\x -> any (runAvFilter x) fs) av
+        filterLM lm = filter (\x -> any (runAvFilter x) fs) lm
+        runAvFilter (a, v) (FilterDnAttr dn' at) = False
+        runAvFilter (a, v) (FilterDnAttrVal dn' at val) = False
+        runAvFilter (a, v) (FilterAttr at) = False
+        runAvFilter _ (FilterDn _) = False
+
 
 filterEntries :: (DN, [Attribute]) -> [LDIF] -> [LDIF]
 filterEntries spec ldif = map (filterEntry spec) ldif

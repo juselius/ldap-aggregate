@@ -3,7 +3,6 @@
 module Main where
 
 import System.IO
-import Control.Concurrent
 import LDIF
 import LDAP
 import LDAPRelay
@@ -11,7 +10,7 @@ import Text.Regex.Posix
 import Data.Maybe
 import Control.Applicative ((<$>))
 import Control.Monad (forM_, forever)
-import Control.Arrow ((>>>))
+import Control.Category ((>>>))
 import Data.Configurator as C
 import Data.Configurator.Types as C
 import qualified Data.ByteString.Char8 as BS
@@ -31,36 +30,44 @@ main = do
 
 syncDirs :: Config -> IO ()
 syncDirs conf = do
-    ignDN <- getFromTo conf "ignore.dn"
-    ignAttrs <- getFromTo conf "ignore.attr"
-    rwDN <- getFromTo conf "rewrite.dn"
-    rwAttrs <- getFromTo conf "rewrite.attr"
+    ignDN <- getIgnoreDn conf "ignore.dn"
+    ignAttrs <- getIgnoreAttrs conf "ignore.attr"
+    rwDN <- getRewriteDN conf "rewrite.dn"
+    rwAttrs <- getRewriteAttrs conf "rewrite.attr"
     sourceTree <- getDir sc
     targetTree <- getDir tc
-    let shapeS = id
-            >>> filterDN ignDN
-            >>> filterEntries ignAttrs
+    let dnFilters = makeDnFilters ignDN
+        attrFilters = makeAttrFilters ignAttrs
+        ldifS = filterDN dnFilters
+            >>> filterEntries attrFilters
             >>> rewriteDN rwDN
             >>> rewriteAttrs rwAttrs
-        shapeT = id
-            >>> filterDN ignDN
-            >>> filterEntries ignAttrs
-        ldifS = shapeS sourceTree
-        ldifT = shapeT targetTree
+            $ sourceTree
+        ldifT = filterDN dnFilters
+            >>> filterEntries attrFilters
+            $ targetTree
     updateDIT tc ldifT $ diffLDIF ldifS ldifT
     where
         sc = C.subconfig "source" conf
         tc = C.subconfig "target" conf
 
-getFromTo :: Config -> Name -> IO [FromTo]
-getFromTo conf x = do
-    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
-    return $ map (\[a,b] -> (a,b)) ft
+getIgnoreDn :: Config -> Name -> IO [String]
+getIgnoreDn conf x =
+    fromJust <$> C.lookup conf x :: IO [String]
 
-getAttrFromTo :: Config -> Name -> IO [FromTo]
-getAttrFromTo conf x = do
+getIgnoreAttrs :: Config -> Name -> IO [[String]]
+getIgnoreAttrs conf x =
+    fromJust <$> C.lookup conf x :: IO [[String]]
+
+getRewriteDN :: Config -> Name -> IO [FromTo]
+getRewriteDN conf x = do
     ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
-    return $ map (\[a,b] -> (a,b)) ft
+    return $ map (\[a, b] -> (a, b)) ft
+
+getRewriteAttrs :: Config -> Name -> IO [(DN, Attribute, FromTo)]
+getRewriteAttrs conf x = do
+    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
+    return $ map (\[dn, a, f, t] -> (dn, a, (f, t))) ft
 
 updateDIT :: Config -> [LDIF] -> [LDIF] -> IO ()
 updateDIT conf s t = do

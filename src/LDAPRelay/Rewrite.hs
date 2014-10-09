@@ -33,19 +33,21 @@ substDN fts dn =
         getFirstMatch = listToMaybe . dropWhile (== dn) $
             map (flip regexSub dn) fts
 
-rewriteAttrs :: [(Attribute, FromTo)] -> [LDIF] -> [LDIF]
+rewriteAttrs :: [(DN, Attribute, FromTo)] -> [LDIF] -> [LDIF]
 rewriteAttrs afts l = map (rewriteAttrs' afts) l
 
-rewriteAttrList :: [(Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
-rewriteAttrList rwpat attrs = map (rewriteAttr rwpat) attrs
+rewriteAttrs' :: [(DN, Attribute, FromTo)] -> LDIF -> LDIF
+rewriteAttrs' afts e@(dn, l) = second (liftLdif (rewriteAttrList dn afts)) e
 
-rewriteAttr :: [(Attribute, FromTo)] -> AttrSpec -> AttrSpec
-rewriteAttr rwpat x@(attr, vals) = maybe x rewrite (lookup attr rwpat)
+rewriteAttrList :: DN -> [(DN, Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
+rewriteAttrList dn rwpat attrs = map (rewriteAttr dn rwpat) attrs
+
+rewriteAttr :: DN -> [(DN, Attribute, FromTo)] -> AttrSpec -> AttrSpec
+rewriteAttr rwpat x@(attr, vals) =
+    then maybe x rewrite (lookup attr rwpat)
+    else x
     where
         rewrite subst = (attr, regexSubs subst vals)
-
-rewriteAttrs' :: [(Attribute, FromTo)] -> LDIF -> LDIF
-rewriteAttrs' afts l = second (liftLdif (rewriteAttrList afts)) l
 
 regexSub :: FromTo -> Value -> Value
 regexSub (src, dst) = PR.subRegexPR src dst

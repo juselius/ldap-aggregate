@@ -16,7 +16,7 @@ genLdif' dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
         expanded = concat . map (uncurry zip . first repeat)
 
 genLdif :: String -> [AttrSpec] -> LDIF
-genLdif dn av = LDIF (dn, LDIFEntry $ LDAPEntry dn av)
+genLdif dn av = (dn, LDIFEntry $ LDAPEntry dn av)
 
 newtype LdifStr = LdifStr { ldifStr :: String } deriving (Show)
 newtype LdifEntryStr = LdifEntryStr { entryStr :: String } deriving (Show)
@@ -105,17 +105,17 @@ ldifDef2 = [
 
 ldiff1 :: [LDIF]
 ldiff1 = [
-      LDIF ("B", LDIFAdd [LDAPMod LdapModAdd "A" ["A1"]])
-    , LDIF ("A", LDIFDelete)
+      ("B", LDIFAdd [LDAPMod LdapModAdd "A" ["A1"]])
+    , ("A", LDIFDelete)
     ]
 
 ldiff2 :: [LDIF]
 ldiff2 = [
-      LDIF ("A", LDIFAdd [ LDAPMod LdapModAdd "A" ["A1", "A2"]
+      ("A", LDIFAdd [ LDAPMod LdapModAdd "A" ["A1", "A2"]
                          , LDAPMod LdapModAdd "B" ["B1"]
                          ]
            )
-    , LDIF ("B", LDIFDelete)
+    , ("B", LDIFDelete)
     ]
 
 sampleLdif = sample' (arbitrary :: Gen LdifStr)

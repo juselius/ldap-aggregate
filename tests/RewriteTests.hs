@@ -5,6 +5,7 @@ module RewriteTests (
 import Test.Tasty
 import Test.Tasty.HUnit
 import LDAPRelay.Rewrite
+import LDAPRelay.Filter
 import TestData
 import LDIF
 
@@ -19,14 +20,14 @@ rewriteTests = testGroup "LDAPRewrite" [
 
 testRewriteDN = newDN == genLdif "dc=oof,dc=com" ldifDef1
     where
-        newDN = rewriteDN [("foo", "oof"), ("com", "moc")] ldif1
+        [newDN] = rewriteDN [("foo", "oof"), ("com", "moc")] [ldif1]
 
 testRewriteAttrs = rewritten == ldiff
     where
-        rewritten = rewriteAttrs attrs ldif1
+        [rewritten] = rewriteAttrs attrs [ldif1]
         attrs = [
-            ("A", ("^A1$", "a1"))
-            , ("B", ("B1", "hubba"))
+            (".*", "A", ("^A1$", "a1"))
+            , (".*", "B", ("B1", "hubba"))
             ]
         ldiff = uncurry genLdif ("dc=foo,dc=com", [
               ("A", ["a1", "A2"])
@@ -35,8 +36,8 @@ testRewriteAttrs = rewritten == ldiff
 
 testFilterAttrs = filtered == ldiff
     where
-        filtered = filterEntry attrs ldif1
-        attrs = (".*", ["B"])
+        [filtered] = filterEntries attrs [ldif1]
+        attrs = makeAttrFilters [[".*", "B"]]
         ldiff = uncurry genLdif ("dc=foo,dc=com", [
               ("A", ["A1", "A2"])
             ])

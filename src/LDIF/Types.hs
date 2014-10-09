@@ -4,20 +4,19 @@ module LDIF.Types (
     , LDAPEntry(..)
     , LDAPMod(..)
     , LDIFRecord(..)
-    , LDIF(..)
+    , LDIF
     , DN
     , Attribute
     , Value
     , AttrSpec
+    , liftLdif
+    , showLDIF
     , isLdapEntry
     , collectLdapEntries
-    , liftLdifRecord
     , ldapEntry2Add
     , ldifEntry2Add
     , ldapEntry2LDIF
     , ldifRecord2Entry
-    , toLdif
-    , fromLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -27,6 +26,7 @@ type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
+type LDIF = (DN, LDIFRecord)
 
 data LDIFRecord =
       LDIFEntry  LDAPEntry
@@ -34,20 +34,6 @@ data LDIFRecord =
     | LDIFChange [LDAPMod]
     | LDIFDelete
     deriving (Eq)
-
-newtype LDIF = LDIF { ldifEntry :: (DN, LDIFRecord) } deriving (Eq)
-
-instance Show LDIF where
-    show (LDIF (dn, rec)) = case rec of
-        x@(LDIFEntry _)  -> formatEntry [] [] x
-        x@(LDIFChange _) -> formatEntry dn "modify" x
-        x@(LDIFAdd _)    -> formatEntry dn "add" x
-        x@LDIFDelete     -> formatEntry dn "delete" x
-        where
-            formatEntry dn' s x =
-                   (if null dn' then "" else "dn: " ++ dn' ++ "\n")
-                ++ (if null s then "" else "changetype: " ++ s ++ "\n")
-                ++ show x
 
 instance Show LDIFRecord where
     show = \case
@@ -68,14 +54,20 @@ instance Show LDIFRecord where
             printOp LdapModReplace a = "replace: " ++ a ++ "\n"
             printOp _ a = "unknown: " ++ a ++ "\n"
 
-fromLdif :: [LDIF] -> [(DN, LDIFRecord)]
-fromLdif = map (\(LDIF x) -> x)
+showLDIF :: LDIF -> String
+showLDIF (dn, rec) = case rec of
+        x@(LDIFEntry _)  -> formatEntry [] [] x
+        x@(LDIFChange _) -> formatEntry dn "modify" x
+        x@(LDIFAdd _)    -> formatEntry dn "add" x
+        x@LDIFDelete     -> formatEntry dn "delete" x
+        where
+            formatEntry dn' s x =
+                   (if null dn' then "" else "dn: " ++ dn' ++ "\n")
+                ++ (if null s then "" else "changetype: " ++ s ++ "\n")
+                ++ show x
 
-toLdif :: [(DN, LDIFRecord)] -> [LDIF]
-toLdif = map LDIF
-
-liftLdifRecord :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
-liftLdifRecord f l = case l of
+liftLdif :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
+liftLdif f l = case l of
     (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry dn (f av)
     (LDIFAdd x) -> LDIFAdd $ map applyf x
     (LDIFChange x) -> LDIFChange $ map applyf x
@@ -90,11 +82,11 @@ isLdapEntry = \case
     _ -> False
 
 collectLdapEntries :: [LDIF] -> [LDIF]
-collectLdapEntries = filter (\(LDIF (_, e)) -> isLdapEntry e)
+collectLdapEntries = filter (\(_, e) -> isLdapEntry e)
 
 -- | Convert any LDIFEntry in LDIF to LDIFAdd
 ldifEntry2Add :: LDIF -> LDIF
-ldifEntry2Add (LDIF (dn, LDIFEntry e)) = LDIF (dn, LDIFAdd (ldapEntry2Add e))
+ldifEntry2Add (dn, LDIFEntry e) = (dn, LDIFAdd (ldapEntry2Add e))
 ldifEntry2Add l = l
 
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
@@ -102,7 +94,7 @@ ldapEntry2Add :: LDAPEntry -> [LDAPMod]
 ldapEntry2Add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
 
 ldapEntry2LDIF :: LDAPEntry -> LDIF
-ldapEntry2LDIF e@(LDAPEntry dn _) = LDIF (dn, LDIFEntry e)
+ldapEntry2LDIF e@(LDAPEntry dn _) = (dn, LDIFEntry e)
 
 -- | Convert LDIFAdd to LDAPEntry
 ldifRecord2Entry :: DN -> LDIFRecord -> Maybe LDAPEntry

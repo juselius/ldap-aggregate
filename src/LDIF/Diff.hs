@@ -51,7 +51,7 @@ diffLDIF :: [LDIF] -> [LDIF] -> [LDIF]
 diffLDIF r1 r2 = diffLDAP x1 x2
     where
         (x1, x2) = bimap1 (map toEntry) (r1, r2)
-        toEntry (LDIF (dn, e)) = fromJust $ ldifRecord2Entry dn e
+        toEntry (dn, e) = fromJust $ ldifRecord2Entry dn e
 
 diffLDAP :: [LDAPEntry] -> [LDAPEntry] -> [LDIF]
 diffLDAP r1 r2 = adds ++ deletes ++ changes
@@ -59,12 +59,12 @@ diffLDAP r1 r2 = adds ++ deletes ++ changes
         adds = map e2add $ filter (not . isEntryIn l1) l2
         (changes, deletes) = foldr processEntry ([], []) l1
         [l1, l2] = map (map (\(LDAPEntry dn av) -> (dn, av))) [r1, r2]
-        e2add x = LDIF $ second (LDIFAdd . list2ldm LdapModAdd) x
+        e2add x = second (LDIFAdd . list2ldm LdapModAdd) x
         processEntry (dn, e1) (cx, dx) = maybe delRec chRec (lookup dn l2)
             where
                 chRec e2 = (diffToLdif e2:cx, dx)
-                delRec = (cx, LDIF (dn, LDIFDelete):dx)
-                diffToLdif e2 = LDIF (dn, diffAttrs e1 e2)
+                delRec = (cx, (dn, LDIFDelete):dx)
+                diffToLdif e2 = (dn, diffAttrs e1 e2)
 
 diffAttrs :: [AttrSpec] -> [AttrSpec] -> LDIFRecord
 diffAttrs r1 r2 = LDIFChange $ adds ++ deletes ++ changes

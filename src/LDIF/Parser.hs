@@ -12,7 +12,7 @@ module LDIF.Parser (
       parseLdifStr
     , parseLdif
     , ldifStr2LdapAdd
-    , LDIF(..)
+    , LDIF
     , LDIFRecord(..)
 ) where
 
@@ -43,7 +43,7 @@ ldifStr2LdapAdd str =
         map toMod ldif
     where
         ldif = extractEntries $ parseLdifStr "" str
-        extractEntries = either (error . show) (map ldifEntry)
+        extractEntries = either (error . show) id
         toMod (dn, LDIFEntry x) = (dn, ldapEntry2Add x)
         toMod (dn, LDIFAdd x) = (dn, x)
         toMod (dn, _) = (dn, [])
@@ -89,10 +89,10 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return $ LDIF (dn, r)
+            return $ (dn, r)
         pAttrValRec dn = do
             x <- pLdapEntry dn
-            return $ LDIF (dn, LDIFEntry x)
+            return $ (dn, LDIFEntry x)
 
 
 pLdapEntry :: DN -> Parser LDAPEntry

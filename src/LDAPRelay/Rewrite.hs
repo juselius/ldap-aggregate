@@ -20,9 +20,9 @@ rewriteDN :: [FromTo] -> [LDIF] -> [LDIF]
 rewriteDN fts ldif = map (rewriteDN' fts) ldif
 
 rewriteDN' :: [FromTo] -> LDIF -> LDIF
-rewriteDN' fts (LDIF (dn, LDIFEntry (LDAPEntry dn' x))) =
-    LDIF (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
-rewriteDN' fts (LDIF (dn, x)) = LDIF (substDN fts dn, x)
+rewriteDN' fts (dn, LDIFEntry (LDAPEntry dn' x)) =
+    (substDN fts dn, LDIFEntry (LDAPEntry (substDN fts dn') x))
+rewriteDN' fts (dn, x) = (substDN fts dn, x)
 
 substDN :: [FromTo] -> String -> String
 substDN fts dn =
@@ -45,8 +45,7 @@ rewriteAttr rwpat x@(attr, vals) = maybe x rewrite (lookup attr rwpat)
         rewrite subst = (attr, regexSubs subst vals)
 
 rewriteAttrs' :: [(Attribute, FromTo)] -> LDIF -> LDIF
-rewriteAttrs' afts (LDIF l) =
-    LDIF $ second (liftLdifRecord (rewriteAttrList afts)) l
+rewriteAttrs' afts l = second (liftLdif (rewriteAttrList afts)) l
 
 regexSub :: FromTo -> Value -> Value
 regexSub (src, dst) = PR.subRegexPR src dst

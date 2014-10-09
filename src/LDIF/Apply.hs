@@ -13,9 +13,9 @@ type Ldif = (DN, LDIFRecord)
 
 applyLdif :: [LDIF] -> [LDIF] -> Either String [LDIF]
 applyLdif mods ldif = runIdentity . runErrorT $
-    liftM toLdif $ applyLdif' ops (fromLdif ldif)
+    applyLdif' ops ldif
     where
-        ops = fromLdif $ map ldifEntry2Add mods
+        ops = map ldifEntry2Add mods
 
 applyLdif' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
 applyLdif' mods ldif = do

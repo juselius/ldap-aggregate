@@ -5,8 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module LDIF.Utils (
-      toAssocList
-    , toHashMap
+      toHashMap
     , isUniqDN
     , bimap1
 ) where
@@ -18,14 +17,11 @@ import qualified Data.HashMap.Lazy as HM
 import Control.Arrow ((***))
 import Control.Monad
 
-toAssocList :: [LDIF] -> [(DN, LDIFRecord)]
-toAssocList = map ldifEntry
-
 toHashMap :: [LDIF] -> HM.HashMap DN LDIFRecord
-toHashMap xs = HM.fromList $ map ldifEntry xs
+toHashMap xs = HM.fromList xs
 
 isUniqDN :: [LDIF] -> Bool
-isUniqDN xs = case hasDuplicates $ toAssocList xs of
+isUniqDN xs = case hasDuplicates xs of
         Just _ -> False
         Nothing -> True
     where

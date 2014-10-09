@@ -13,6 +13,7 @@ import LDAP
 import LDIF
 import LDAPRelay.Types
 import Data.Maybe
+import Text.Regex.Posix
 import qualified Text.RegexPR as PR
 import Control.Arrow (second)
 
@@ -37,15 +38,17 @@ rewriteAttrs :: [(DN, Attribute, FromTo)] -> [LDIF] -> [LDIF]
 rewriteAttrs afts l = map (rewriteAttrs' afts) l
 
 rewriteAttrs' :: [(DN, Attribute, FromTo)] -> LDIF -> LDIF
-rewriteAttrs' afts e@(dn, l) = second (liftLdif (rewriteAttrList dn afts)) e
+rewriteAttrs' afts e@(dn, l) = second (liftLdif (rewriteAttrList afts')) e
+    where
+        afts' = foldr (\(dnf, a, ft) acc ->
+            if dn =~ dnf then (a, ft):acc else acc) [] afts
 
-rewriteAttrList :: DN -> [(DN, Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
-rewriteAttrList dn rwpat attrs = map (rewriteAttr dn rwpat) attrs
+rewriteAttrList :: [(Attribute, FromTo)] -> [AttrSpec] -> [AttrSpec]
+rewriteAttrList rwpat attrs = map (rewriteAttr rwpat) attrs
 
-rewriteAttr :: DN -> [(DN, Attribute, FromTo)] -> AttrSpec -> AttrSpec
+rewriteAttr :: [(Attribute, FromTo)] -> AttrSpec -> AttrSpec
 rewriteAttr rwpat x@(attr, vals) =
-    then maybe x rewrite (lookup attr rwpat)
-    else x
+    maybe x rewrite (lookup attr rwpat)
     where
         rewrite subst = (attr, regexSubs subst vals)
 

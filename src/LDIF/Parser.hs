@@ -1,6 +1,7 @@
 {-| The module emits data structures directly usable by the LDAP package.
 
-    This is a simplified version of Text.LDIF.Parser. It expexts valid and
+    This is a simplified version of Text.LDIF.Parser, originally by
+    Radoslav Dorick <radoslav.dorick@gmail.com>. It expexts valid and
     well formed LDIF as input. It does no actual parsing and validation of
     entries.
 

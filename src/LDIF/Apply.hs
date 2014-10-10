@@ -1,3 +1,6 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
 module LDIF.Apply (
     applyLdif
 ) where

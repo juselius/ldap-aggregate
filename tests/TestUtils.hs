@@ -18,7 +18,6 @@ import Text.Regex.Posix
 import LDAP
 import LDIF.Parser
 import qualified Data.ByteString.Char8 as BS
-
 import LDAPRelay.Rewrite
 import LDAPRelay.DirectoryTree
 
@@ -33,7 +32,7 @@ clearTree :: LDAP -> String -> IO ()
 clearTree ldap tree = do
     ldif <- getDIT ldap tree
     let ldif' = reverse $ filter delEntry ldif
-    mapM_ (\dn-> ldapDelete ldap (ledn dn)) ldif'
+    mapM_ (ldapDelete ldap . ledn dn) ldif'
     where
         delEntry e
             | ledn e =~ ("^dc=(source|target)$" :: String) :: Bool = False
@@ -44,8 +43,7 @@ populateSource :: LDAP -> IO ()
 populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode BS.hGetContents
     lpops <- withFile "./ldif/source.populate.ldif" ReadMode BS.hGetContents
-    let commit x = mapM_ (\(dn, attrs) ->
-            ldapAdd ldap dn attrs) (ldifStr2LdapAdd x)
+    let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldifStr2LdapAdd x)
     commit ltree
     commit lpops
 
@@ -53,8 +51,7 @@ populateTarget :: LDAP -> IO ()
 populateTarget ldap = do
     ltree <- withFile "./ldif/target.tree.ldif" ReadMode BS.hGetContents
     lpops <- withFile "./ldif/target.populate.ldif" ReadMode BS.hGetContents
-    let commit x = mapM_ (\(dn, attrs) ->
-            ldapAdd ldap dn attrs) (ldapStr2LdapMod x)
+    let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldapStr2LdapMod x)
     commit ltree
     commit lpops
 

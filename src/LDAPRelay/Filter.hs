@@ -4,10 +4,10 @@
 
 module LDAPRelay.Filter (
       filterLdif
-    , filterDN
+    , filterDn
     , filterEntries
-    , makeDnFilters
-    , makeAttrFilters
+    , makeDnFilter
+    , makeAttrFilter
 ) where
 
 import LDIF
@@ -16,56 +16,57 @@ import Text.Regex.Posix
 import Control.Arrow (second)
 import Data.List (partition, foldl')
 
-makeDnFilters :: [String] -> [Filter]
-makeDnFilters = map FilterDn
+import Debug.Trace
 
-makeAttrFilters :: [[String]] -> [Filter]
-makeAttrFilters = map toFilter
+makeDnFilter :: String -> Filter RegexStr
+makeDnFilter = FilterDn
+
+makeAttrFilter :: [String] -> Filter RegexStr
+makeAttrFilter = toFilter
     where
-        toFilter (a:[]) = FilterAttr a
-        toFilter (dn:a:[]) = FilterDnAttr dn a
-        toFilter (dn:a:v:[]) = FilterDnVal dn a v
-        toFilter x = error $ "Invalid filter spec: " ++ show x
+        toFilter [a] = FilterAttr a
+        toFilter [dn, a] = FilterAttrDn dn a
+        toFilter [dn, a, v] = FilterValDn dn a v
+        toFilter _ = InvalidFilter
 
-
-filterLdif :: [Filter] -> [LDIF] -> [LDIF]
+filterLdif :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterLdif fs ldif = filterEntries fs ldif'
     where
-        ldif' = filterDN fs' ldif
+        ldif' = filterDn fs' ldif
         fs' = fst $ partition isDnFilter fs
 
-filterDN :: [Filter] -> [LDIF] -> [LDIF]
-filterDN fs = filter (\(dn, _) -> any (dnFilter dn) fs)
+filterDn :: [Filter RegexStr] -> [LDIF] -> [LDIF]
+filterDn fs = filter (\(dn, _) -> all (dnFilter dn) fs)
     where
-        dnFilter dn' (FilterDn f) = f =~ dn'
-        dnFilter _ _ = False
+        dnFilter dn' (FilterDn f) = not $ f =~ dn'
+        dnFilter _ _ = True
 
-filterEntries :: [Filter] -> [LDIF] -> [LDIF]
+filterEntries :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterEntries fs = map (filterLDIF fs')
     where
         fs' = snd $ partition isDnFilter fs
 
-filterLDIF :: [Filter] -> LDIF -> LDIF
+filterLDIF :: [Filter RegexStr] -> LDIF -> LDIF
 filterLDIF fs l@(dn, _) = second (liftLdif (runAttrFilters dn fs)) l
 
-runAttrFilters :: DN -> [Filter] -> [AttrSpec] -> [AttrSpec]
+runAttrFilters :: DN -> [Filter RegexStr] -> [AttrSpec] -> [AttrSpec]
 runAttrFilters dn fs av = filter (\x -> any (matchAvFilter dn x) fs') av'
     where
         av' = filter (null . snd) $ map (filterValues dn fs'') av
         (fs'', fs') = partition isValueFilter fs
-        isValueFilter (FilterDnVal {}) = True
+        isValueFilter (FilterValDn {}) = True
         isValueFilter _ = False
 
-matchAvFilter :: DN -> AttrSpec -> Filter -> Bool
+matchAvFilter :: DN -> AttrSpec -> Filter RegexStr -> Bool
 matchAvFilter dn (a, _) f = case f of
     FilterAttr atf -> a =~ atf
-    FilterDnAttr dnf atf -> dn =~ dnf && a =~ atf
+    FilterAttrDn dnf atf -> dn =~ dnf && a =~ atf
     _ -> False
 
-filterValues :: DN -> [Filter] -> AttrSpec -> AttrSpec
+filterValues :: DN -> [Filter RegexStr] -> AttrSpec -> AttrSpec
 filterValues dn f as = foldl' applyFilter as f
     where
-        applyFilter av (FilterDnVal dnf atf valf) =
+        applyFilter av (FilterValDn dnf atf valf) =
             if dn =~ dnf
             then filterAV av
             else av
@@ -76,7 +77,7 @@ filterValues dn f as = foldl' applyFilter as f
                     else e
         applyFilter acc _ = acc
 
-isDnFilter :: Filter -> Bool
+isDnFilter :: Filter RegexStr -> Bool
 isDnFilter (FilterDn _) = True
 isDnFilter _ = False
 

@@ -1,4 +1,6 @@
-{- This file is a simplified version of Text.LDIF.Preproc. -}
+--
+-- <jonas.juselius@uit.no> 2014
+--
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
@@ -30,34 +32,29 @@ main = do
 
 syncDirs :: Config -> IO ()
 syncDirs conf = do
-    ignDN <- getIgnoreDn conf "ignore.dn"
-    ignAttrs <- getIgnoreAttrs conf "ignore.attr"
-    rwDN <- getRewriteDN conf "rewrite.dn"
-    rwAttrs <- getRewriteAttrs conf "rewrite.attr"
+    omitDn <- getFilter conf "ignore.dn" makeDnFilter
+    omitAttrs <- getFilter conf "ignore.attr" makeAttrFilter
+    rwDN <- getFilter conf "rewrite.dn" makeRewriteDn
+    rwAttrs <- getFilter conf "rewrite.attr" makeRewriteAttrs
     sourceTree <- getDir sc
     targetTree <- getDir tc
-    let dnFilters = makeDnFilters ignDN
-        attrFilters = makeAttrFilters ignAttrs
-        ldifS = filterDN dnFilters
-            >>> filterEntries attrFilters
-            >>> rewriteDN rwDN
+    let ldifS = filterDn omitDn
+            >>> filterEntries omitAttrs
+            >>> rewriteDn rwDN
             >>> rewriteAttrs rwAttrs
             $ sourceTree
-        ldifT = filterDN dnFilters
-            >>> filterEntries attrFilters
+        ldifT = filterDn omitDn
+            >>> filterEntries omitAttrs
             $ targetTree
     updateDIT tc ldifT $ diffLDIF ldifS ldifT
     where
         sc = C.subconfig "source" conf
         tc = C.subconfig "target" conf
 
-getIgnoreDn :: Config -> Name -> IO [String]
-getIgnoreDn conf x =
-    fromJust <$> C.lookup conf x :: IO [String]
-
-getIgnoreAttrs :: Config -> Name -> IO [[String]]
-getIgnoreAttrs conf x =
-    fromJust <$> C.lookup conf x :: IO [[String]]
+getFilter :: Configured a => Config -> Name -> (a -> b) -> IO [b]
+getFilter conf x f = map f <$> fromJust <$> filters
+    where
+        filters = C.lookup conf x :: Configured a => IO (Maybe [a])
 
 getRewriteDN :: Config -> Name -> IO [FromTo]
 getRewriteDN conf x = do

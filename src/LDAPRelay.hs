@@ -1,11 +1,9 @@
-module LDAPRelay (
-      module LDAPRelay.Types
-    , module LDAPRelay.DirectoryTree
-    , module LDAPRelay.Rewrite
-    , module LDAPRelay.Filter
-) where
+--
+-- <jonas.juselius@uit.no> 2014
+--
+module LDAPRelay (module M) where
 
-import LDAPRelay.Types
-import LDAPRelay.DirectoryTree
-import LDAPRelay.Rewrite
-import LDAPRelay.Filter
+import LDAPRelay.Types as M
+import LDAPRelay.DirectoryTree as M
+import LDAPRelay.Rewrite as M
+import LDAPRelay.Filter as M

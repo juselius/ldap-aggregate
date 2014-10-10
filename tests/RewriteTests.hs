@@ -4,8 +4,7 @@ module RewriteTests (
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import LDAPRelay.Rewrite
-import LDAPRelay.Filter
+import LDAPRelay
 import TestData
 import LDIF
 
@@ -20,26 +19,30 @@ rewriteTests = testGroup "LDAPRewrite" [
 
 testRewriteDN = newDN == genLdif "dc=oof,dc=com" ldifDef1
     where
-        [newDN] = rewriteDN [("foo", "oof"), ("com", "moc")] [ldif1]
+        [newDN] = rewriteDn fs [ldif1]
+        fs = map makeRewriteDn [["foo", "oof"], ["com", "moc"]]
 
 testRewriteAttrs = rewritten == ldiff
     where
         [rewritten] = rewriteAttrs attrs [ldif1]
-        attrs = [
-            (".*", "A", ("^A1$", "a1"))
-            , (".*", "B", ("B1", "hubba"))
+        attrs = map makeRewriteAttrs [
+            ["A", "^A1$", "a1"]
+            , ["B", "B1", "hubba"]
             ]
         ldiff = uncurry genLdif ("dc=foo,dc=com", [
               ("A", ["a1", "A2"])
             , ("B", ["hubba"])
             ])
 
-testFilterAttrs = filtered == ldiff
+testFilterAttrs = trace (unwords
+    ["\n", showLDIF filtered , "\nvs.\n", showLDIF ldiff])
+    filtered == ldiff
     where
         [filtered] = filterEntries attrs [ldif1]
-        attrs = makeAttrFilters [[".*", "B"]]
-        ldiff = uncurry genLdif ("dc=foo,dc=com", [
-              ("A", ["A1", "A2"])
+        attrs = map makeAttrFilter [] -- [["A", "B"]]
+        ldiff = uncurry genLdif ("dc=foo,dc=com",
+            [ ("A", ["A1"])
+            , ("C", ["C1"])
             ])
 
 (ldif1, ldif2) = bimap1 (uncurry genLdif) (l1, l2)

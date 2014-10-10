@@ -13,7 +13,7 @@ genLdif' dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
     where
         attrs = foldl (\s (a, v) ->
             s ++ a ++ ": " ++ v ++ "\n") "" (expanded av)
-        expanded = concat . map (uncurry zip . first repeat)
+        expanded = concatMap (uncurry zip . first repeat)
 
 genLdif :: String -> [AttrSpec] -> LDIF
 genLdif dn av = (dn, LDIFEntry $ LDAPEntry dn av)
@@ -101,6 +101,7 @@ ldifDef1 = [
 ldifDef2 :: [AttrSpec]
 ldifDef2 = [
       ("A", ["A1"])
+      ("C", ["C1"])
     ]
 
 ldiff1 :: [LDIF]

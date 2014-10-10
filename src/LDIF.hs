@@ -1,13 +1,10 @@
-module LDIF (
-      module LDIF.Types
-    , module LDIF.Parser
-    , module LDIF.Diff
-    , module LDIF.Utils
-    , module LDIF.Apply
-) where
+--
+-- <jonas.juselius@uit.no> 2014
+--
+module LDIF (module M) where
 
-import LDIF.Types
-import LDIF.Parser
-import LDIF.Diff
-import LDIF.Apply
-import LDIF.Utils
+import LDIF.Types as M
+import LDIF.Parser as M
+import LDIF.Diff as M
+import LDIF.Apply as M
+import LDIF.Utils as M

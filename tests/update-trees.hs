@@ -5,14 +5,12 @@ module Main where
 import System.Environment
 import System.IO
 import qualified Data.ByteString.Char8 as BS
-
 import LDAPRelay.DirectoryTree
 
 main :: IO ()
 main = do
     args <- getArgs
-    case args of
-        _ -> doS
+    doS
     where
         doS = do
             ldap <- bindDIT "dc=source"

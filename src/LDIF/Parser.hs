@@ -1,6 +1,7 @@
 {-| The module emits data structures directly usable by the LDAP package.
 
-    This is a simplified version of Text.LDIF.Parser. It expexts valid and
+    This is a simplified version of Text.LDIF.Parser, originally by
+    Radoslav Dorick <radoslav.dorick@gmail.com>. It expexts valid and
     well formed LDIF as input. It does no actual parsing and validation of
     entries.
 
@@ -89,10 +90,10 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return $ (dn, r)
+            return (dn, r)
         pAttrValRec dn = do
             x <- pLdapEntry dn
-            return $ (dn, LDIFEntry x)
+            return (dn, LDIFEntry x)
 
 
 pLdapEntry :: DN -> Parser LDAPEntry
@@ -138,12 +139,12 @@ pModSpec = do
 
 mkMod :: String -> [AttrSpec] -> LDAPMod
 mkMod modStr av
-    | modStr == "add:" = rec LdapModAdd
-    | modStr == "delete:" = rec LdapModDelete
-    | modStr == "replace:" = rec LdapModReplace
+    | modStr == "add:" = toRec LdapModAdd
+    | modStr == "delete:" = toRec LdapModDelete
+    | modStr == "replace:" = toRec LdapModReplace
     | otherwise = error $ "unexpected mod:" ++ modStr
     where
-        rec op = LDAPMod op attrName attrs
+        toRec op = LDAPMod op attrName attrs
         attrName = fst . head $ av
         attrs = concatMap snd av
 

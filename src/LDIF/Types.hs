@@ -1,3 +1,6 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
 {-# LANGUAGE LambdaCase #-}
 module LDIF.Types (
       LDAPModOp(..)
@@ -10,6 +13,7 @@ module LDIF.Types (
     , Value
     , AttrSpec
     , liftLdif
+    , liftLdif'
     , showLDIF
     , isLdapEntry
     , collectLdapEntries
@@ -55,11 +59,11 @@ instance Show LDIFRecord where
             printOp _ a = "unknown: " ++ a ++ "\n"
 
 showLDIF :: LDIF -> String
-showLDIF (dn, rec) = case rec of
-        x@(LDIFEntry _)  -> formatEntry [] [] x
-        x@(LDIFChange _) -> formatEntry dn "modify" x
-        x@(LDIFAdd _)    -> formatEntry dn "add" x
-        x@LDIFDelete     -> formatEntry dn "delete" x
+showLDIF (dn, r) = case r of
+        LDIFEntry _  -> formatEntry [] [] r
+        LDIFChange _ -> formatEntry dn "modify" r
+        LDIFAdd _    -> formatEntry dn "add" r
+        LDIFDelete   -> formatEntry dn "delete" r
         where
             formatEntry dn' s x =
                    (if null dn' then "" else "dn: " ++ dn' ++ "\n")
@@ -74,6 +78,11 @@ liftLdif f l = case l of
     LDIFDelete -> LDIFDelete
     where
         applyf (LDAPMod op a v) = LDAPMod op a $ snd $ head (f [(a, v)])
+
+liftLdif' :: (DN -> DN) -> LDIFRecord -> LDIFRecord
+liftLdif' f l = case l of
+    (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry (f dn) av
+    _ -> l
 
 isLdapEntry :: LDIFRecord -> Bool
 isLdapEntry = \case

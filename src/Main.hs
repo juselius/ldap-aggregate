@@ -1,4 +1,3 @@
-{- This file is a simplified version of Text.LDIF.Preproc. -}
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 

@@ -16,6 +16,8 @@ import Text.Regex.Posix
 import Control.Arrow (second)
 import Data.List (partition, foldl')
 
+import Debug.Trace
+
 makeDnFilter :: String -> Filter RegexStr
 makeDnFilter = FilterDn
 
@@ -34,10 +36,10 @@ filterLdif fs ldif = filterEntries fs ldif'
         fs' = fst $ partition isDnFilter fs
 
 filterDn :: [Filter RegexStr] -> [LDIF] -> [LDIF]
-filterDn fs = filter (\(dn, _) -> any (dnFilter dn) fs)
+filterDn fs = filter (\(dn, _) -> all (dnFilter dn) fs)
     where
-        dnFilter dn' (FilterDn f) = f =~ dn'
-        dnFilter _ _ = False
+        dnFilter dn' (FilterDn f) = not $ f =~ dn'
+        dnFilter _ _ = True
 
 filterEntries :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterEntries fs = map (filterLDIF fs')

@@ -20,5 +20,5 @@ data Filter a =
                     , matchAttr :: RegexStr
                     , operand   :: a
                     }
-    | InvalidFilter
+    | InvalidFilter deriving (Show)
 

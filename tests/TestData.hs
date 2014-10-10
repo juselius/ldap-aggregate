@@ -101,6 +101,7 @@ ldifDef1 = [
 ldifDef2 :: [AttrSpec]
 ldifDef2 = [
       ("A", ["A1"])
+      ("C", ["C1"])
     ]
 
 ldiff1 :: [LDIF]

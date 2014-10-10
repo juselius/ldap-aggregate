@@ -34,12 +34,15 @@ testRewriteAttrs = rewritten == ldiff
             , ("B", ["hubba"])
             ])
 
-testFilterAttrs = filtered == ldiff
+testFilterAttrs = trace (unwords
+    ["\n", showLDIF filtered , "\nvs.\n", showLDIF ldiff])
+    filtered == ldiff
     where
         [filtered] = filterEntries attrs [ldif1]
-        attrs = map makeAttrFilter [[".*", "B"]]
-        ldiff = uncurry genLdif ("dc=foo,dc=com", [
-              ("A", ["A1", "A2"])
+        attrs = map makeAttrFilter [] -- [["A", "B"]]
+        ldiff = uncurry genLdif ("dc=foo,dc=com",
+            [ ("A", ["A1"])
+            , ("C", ["C1"])
             ])
 
 (ldif1, ldif2) = bimap1 (uncurry genLdif) (l1, l2)

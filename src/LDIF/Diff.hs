@@ -59,7 +59,7 @@ diffLDAP r1 r2 = adds ++ deletes ++ changes
         adds = map e2add $ filter (not . isEntryIn l1) l2
         (changes, deletes) = foldr processEntry ([], []) l1
         [l1, l2] = map (map (\(LDAPEntry dn av) -> (dn, av))) [r1, r2]
-        e2add x = second (LDIFAdd . list2ldm LdapModAdd) x
+        e2add = second (LDIFAdd . list2ldm LdapModAdd)
         processEntry (dn, e1) (cx, dx) = maybe delRec chRec (lookup dn l2)
             where
                 chRec e2 = (diffToLdif e2:cx, dx)

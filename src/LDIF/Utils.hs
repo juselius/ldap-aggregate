@@ -18,7 +18,7 @@ import Control.Arrow ((***))
 import Control.Monad
 
 toHashMap :: [LDIF] -> HM.HashMap DN LDIFRecord
-toHashMap xs = HM.fromList xs
+toHashMap = HM.fromList
 
 isUniqDN :: [LDIF] -> Bool
 isUniqDN xs = case hasDuplicates xs of

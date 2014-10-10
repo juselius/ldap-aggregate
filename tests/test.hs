@@ -3,8 +3,7 @@ import LdifTests
 import RewriteTests
 
 main :: IO ()
-main = do
-    defaultMain tests
+main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [ldifTests, rewriteTests]

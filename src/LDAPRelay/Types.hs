@@ -6,18 +6,19 @@ module LDAPRelay.Types (
       RegexStr
     , FromTo
     , Filter(..)
-    , Rewrite(..)
 ) where
 
 type RegexStr = String
 type FromTo = (RegexStr, RegexStr)
 
-data Filter =
-      FilterDn     { dnF   :: RegexStr }
-    | FilterAttr   { attrF :: RegexStr }
-    | FilterDnAttr { dnF   :: RegexStr, attrF:: RegexStr }
-    | FilterDnVal  { dnF   :: RegexStr, attrF:: RegexStr, valF :: RegexStr }
+data Filter a =
+      FilterDn      { operand   :: a }
+    | FilterAttr    { operand   :: a }
+    | FilterVal     { matchAttr :: RegexStr, operand :: a }
+    | FilterAttrDn  { matchDn   :: RegexStr, operand :: a }
+    | FilterValDn   { matchDn   :: RegexStr
+                    , matchAttr :: RegexStr
+                    , operand   :: a
+                    }
+    | InvalidFilter
 
-data Rewrite =
-      RewriteDn   { rwSpec   :: FromTo }
-    | RewriteAttr { rwAttr :: String, rwSpec :: FromTo }

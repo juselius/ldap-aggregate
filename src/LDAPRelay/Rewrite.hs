@@ -20,18 +20,14 @@ import qualified Text.RegexPR as PR
 import Control.Arrow (first, second, (***))
 
 makeRewriteDn:: [String] -> Filter FromTo
-makeRewriteDn= toFilter
-    where
-        toFilter [f, t] = FilterDn (f, t)
-        toFilter _ = InvalidFilter
+makeRewriteDn [f, t] = FilterDn (f, t)
+makeRewriteDn _ = InvalidFilter
 
 makeRewriteAttrs:: [String] -> Filter FromTo
-makeRewriteAttrs = toFilter
-    where
-        toFilter [f, t] = FilterAttr (f, t)
-        toFilter [a, f, t] = FilterVal a (f, t)
-        toFilter [dn, a, f, t] = FilterValDn dn a (f, t)
-        toFilter _ = InvalidFilter
+makeRewriteAttrs [f, t] = FilterAttr (f, t)
+makeRewriteAttrs [a, f, t] = FilterVal a (f, t)
+makeRewriteAttrs [dn, a, f, t] = FilterValDn dn a (f, t)
+makeRewriteAttrs _ = InvalidFilter
 
 rewriteDn :: [Filter FromTo] -> [LDIF] -> [LDIF]
 rewriteDn fs = map (rewriteDn' fs)

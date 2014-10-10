@@ -22,12 +22,10 @@ makeDnFilter :: String -> Filter RegexStr
 makeDnFilter = FilterDn
 
 makeAttrFilter :: [String] -> Filter RegexStr
-makeAttrFilter = toFilter
-    where
-        toFilter [a] = FilterAttr a
-        toFilter [dn, a] = FilterAttrDn dn a
-        toFilter [dn, a, v] = FilterValDn dn a v
-        toFilter _ = InvalidFilter
+makeAttrFilter [a] = FilterAttr a
+makeAttrfilter [dn, a] = FilterAttrDn dn a
+makeAttrfilter [dn, a, v] = FilterValDn dn a v
+makeAttrfilter _ = InvalidFilter
 
 filterLdif :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterLdif fs ldif = filterEntries fs ldif'

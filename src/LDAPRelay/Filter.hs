@@ -38,7 +38,7 @@ filterLdif fs ldif = filterEntries fs ldif'
 filterDn :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterDn fs = filter (\(dn, _) -> all (dnFilter dn) fs)
     where
-        dnFilter dn' (FilterDn f) = not $ f =~ dn'
+        dnFilter dn' (FilterDn f) = not $ dn' =~ f
         dnFilter _ _ = True
 
 filterEntries :: [Filter RegexStr] -> [LDIF] -> [LDIF]
@@ -50,18 +50,19 @@ filterLDIF :: [Filter RegexStr] -> LDIF -> LDIF
 filterLDIF fs l@(dn, _) = second (liftLdif (runAttrFilters dn fs)) l
 
 runAttrFilters :: DN -> [Filter RegexStr] -> [AttrSpec] -> [AttrSpec]
-runAttrFilters dn fs av = filter (\x -> any (matchAvFilter dn x) fs') av'
+runAttrFilters dn fs av = filter (\x -> all (matchAttrFilter dn x) fs') av'
     where
-        av' = filter (null . snd) $ map (filterValues dn fs'') av
+        av' = filter (not . null . snd) $ map (filterValues dn fs'') av
         (fs'', fs') = partition isValueFilter fs
+        isValueFilter (FilterVal {}) = True
         isValueFilter (FilterValDn {}) = True
         isValueFilter _ = False
 
-matchAvFilter :: DN -> AttrSpec -> Filter RegexStr -> Bool
-matchAvFilter dn (a, _) f = case f of
-    FilterAttr atf -> a =~ atf
-    FilterAttrDn dnf atf -> dn =~ dnf && a =~ atf
-    _ -> False
+matchAttrFilter :: DN -> AttrSpec -> Filter RegexStr -> Bool
+matchAttrFilter dn (a, _) f = case f of
+    FilterAttr atf -> not $ a =~ atf
+    FilterAttrDn dnf atf -> not $ dn =~ dnf && a =~ atf
+    _ -> True
 
 filterValues :: DN -> [Filter RegexStr] -> AttrSpec -> AttrSpec
 filterValues dn f as = foldl' applyFilter as f
@@ -73,7 +74,7 @@ filterValues dn f as = foldl' applyFilter as f
             where
                 filterAV e@(a, v) =
                     if a =~ atf
-                    then (a, filter (=~ valf) v)
+                    then (a, filter (not . (=~ valf)) v)
                     else e
         applyFilter acc _ = acc
 

@@ -93,15 +93,15 @@ genSafeString1 = (:) <$> genSafeChar <*> listOf1 genSafeAlpha
 
 
 ldifDef1 :: [AttrSpec]
-ldifDef1 = [
-      ("A", ["A1", "A2"])
+ldifDef1 =
+    [ ("A", ["A1", "A2"])
     , ("B", ["B1"])
     ]
 
 ldifDef2 :: [AttrSpec]
-ldifDef2 = [
-      ("A", ["A1"])
-      ("C", ["C1"])
+ldifDef2 =
+    [ ("A", ["A1"])
+    , ("C", ["C1"])
     ]
 
 ldiff1 :: [LDIF]

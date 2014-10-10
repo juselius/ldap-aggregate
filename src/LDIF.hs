@@ -1,3 +1,6 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
 module LDIF (module M) where
 
 import LDIF.Types as M

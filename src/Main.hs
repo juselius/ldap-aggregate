@@ -1,3 +1,6 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 

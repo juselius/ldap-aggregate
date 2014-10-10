@@ -1,3 +1,6 @@
+--
+-- <jonas.juselius@uit.no> 2014
+--
 module LDAPRelay (module M) where
 
 import LDAPRelay.Types as M

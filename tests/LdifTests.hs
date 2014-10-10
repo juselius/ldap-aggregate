@@ -23,11 +23,11 @@ ldifPropertyTests = testGroup "LDIF properties" [
 ldifParserIdempotent:: LdifStr -> Bool
 ldifParserIdempotent (LdifStr s) = s == l
     where
-        l = init . unlines . map show $ parseLdif $ BS.pack s
+        l = init . unlines . map showLDIF $ parseLdif $ BS.pack s
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =
-        "changetype" `isInfixOf` (unlines . map show $ dl)
+        "changetype" `isInfixOf` (unlines . map showLDIF $ dl)
         where
             l1 = parseLdif $ BS.pack s1
             l2 = parseLdif $ BS.pack s2

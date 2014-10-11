@@ -44,7 +44,6 @@ library
     build-depends:
           base
         , mtl
-        , ConfigFile
         , LDAP
         , ldif
         , bytestring
@@ -68,7 +67,6 @@ executable ldaprelay.bin
         , mtl
         , regex-posix
         , regexpr
-        , ConfigFile
         , bytestring
         , ldif
         , parsec
@@ -100,7 +98,6 @@ test-suite tests
             , mtl
             , QuickCheck
             , regex-posix
-            , ConfigFile
             , bytestring
             , ldif
             , parsec

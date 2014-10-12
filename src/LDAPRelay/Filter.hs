@@ -16,16 +16,14 @@ import Text.Regex.Posix
 import Control.Arrow (second)
 import Data.List (partition, foldl')
 
-import Debug.Trace
-
 makeDnFilter :: String -> Filter RegexStr
 makeDnFilter = FilterDn
 
 makeAttrFilter :: [String] -> Filter RegexStr
 makeAttrFilter [a] = FilterAttr a
-makeAttrfilter [dn, a] = FilterAttrDn dn a
-makeAttrfilter [dn, a, v] = FilterValDn dn a v
-makeAttrfilter _ = InvalidFilter
+makeAttrFilter [dn, a] = FilterAttrDn dn a
+makeAttrFilter [dn, a, v] = FilterValDn dn a v
+makeAttrFilter _ = InvalidFilter
 
 filterLdif :: [Filter RegexStr] -> [LDIF] -> [LDIF]
 filterLdif fs ldif = filterEntries fs ldif'

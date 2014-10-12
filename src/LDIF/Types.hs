@@ -37,7 +37,6 @@ data LDIFRecord =
     | LDIFAdd    [LDAPMod]
     | LDIFChange [LDAPMod]
     | LDIFDelete
-    deriving (Eq)
 
 instance Show LDIFRecord where
     show = \case
@@ -57,6 +56,26 @@ instance Show LDIFRecord where
             printOp LdapModDelete a = "delete: " ++ a ++ "\n"
             printOp LdapModReplace a = "replace: " ++ a ++ "\n"
             printOp _ a = "unknown: " ++ a ++ "\n"
+
+instance Eq LDIFRecord where
+    (==) (LDIFEntry e1)  (LDIFEntry e2)  = e1 `cmpEntry` e2
+    (==) (LDIFAdd e1)    (LDIFAdd e2)    = cmpMod e1 e2
+    (==) (LDIFChange e1) (LDIFChange e2) = cmpMod e1 e2
+    (==) (LDIFDelete)    (LDIFDelete)    = True
+    (==) _ _ = False
+
+cmpEntry :: LDAPEntry -> LDAPEntry -> Bool
+cmpEntry (LDAPEntry _ e1) (LDAPEntry _ e2) = all cmp e1
+    where
+        cmp (a, v) = maybe False (all (`elem` v)) $ lookup a e2
+
+cmpMod :: [LDAPMod] -> [LDAPMod] -> Bool
+cmpMod e1 e2 = (length e1 == length e2) && and (zipWith cmp e1 e2)
+    where
+        cmp (LDAPMod o1 a1 v1) (LDAPMod o2 a2 v2) = (o1 == o2)
+            && (a1 == a2)
+            && all (`elem` v2) v1
+
 
 showLDIF :: LDIF -> String
 showLDIF (dn, r) = case r of

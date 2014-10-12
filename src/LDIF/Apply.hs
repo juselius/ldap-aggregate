@@ -60,19 +60,19 @@ applyEntry (LDIFEntry _) _ = throwError "Cannot apply LDAPEntry!"
 applyEntry _ _ = throwError "Invalid apply!"
 
 applyAttr :: [AttrSpec] -> LDAPMod -> ApplyError [AttrSpec]
-applyAttr attrs (LDAPMod op name vals) =
-    return $ maybe attrs runModOp (lookup name attrs)
-    where
-        runModOp = case op of
-            LdapModAdd -> addAttr
-            LdapModDelete -> delAttr
-            LdapModReplace -> modAttr
-            _ -> const attrs
-        addAttr e = newAttr e:rest
-        delAttr = const rest
-        modAttr e = [(name, e)]
-        newAttr e = (name, vals ++ e)
-        rest = deleteBy cmpfst (name, []) attrs
+applyAttr attrs (LDAPMod op name vals) = return $
+    case op of
+        LdapModAdd -> maybe addAttr appendAttr (lookup name attrs)
+        LdapModDelete -> maybe attrs delAttr (lookup name attrs)
+        LdapModReplace -> replaceAttr
+        _ -> attrs
+        where
+            addAttr = (name, vals):attrs
+            appendAttr v = (name, vals ++ v):rest
+            delAttr v = if null (delv v) then rest else (name, delv v):rest
+            replaceAttr = (name, vals):rest
+            rest = deleteBy cmpfst (name, []) attrs
+            delv v = foldl' (\acc x -> deleteBy (==) x acc) v vals
 
 isAdd :: Ldif -> Bool
 isAdd (_, LDIFAdd _) = True

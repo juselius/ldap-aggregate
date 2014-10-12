@@ -12,7 +12,6 @@
 module LDIF.Parser (
       parseLdifStr
     , parseLdif
-    , ldifStr2LdapAdd
     , LDIF
     , LDIFRecord(..)
 ) where
@@ -37,17 +36,6 @@ parseLdifStr name xs = case eldif of
     where
         (input, ptab) = preproc xs
         eldif = parse pLdif name input
-
--- | Convert a LDIF string of LDAP search results to LDAPMod for add
-ldifStr2LdapAdd :: BC.ByteString -> [(String, [LDAPMod])]
-ldifStr2LdapAdd str =
-        map toMod ldif
-    where
-        ldif = extractEntries $ parseLdifStr "" str
-        extractEntries = either (error . show) id
-        toMod (dn, LDIFEntry x) = (dn, ldapEntry2Add x)
-        toMod (dn, LDIFAdd x) = (dn, x)
-        toMod (dn, _) = (dn, [])
 
 -- | Parsec ldif parser
 pLdif :: Parser [LDIF]

@@ -56,16 +56,6 @@ getFilter conf x f = map f <$> fromJust <$> filters
     where
         filters = C.lookup conf x :: Configured a => IO (Maybe [a])
 
-getRewriteDN :: Config -> Name -> IO [FromTo]
-getRewriteDN conf x = do
-    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
-    return $ map (\[a, b] -> (a, b)) ft
-
-getRewriteAttrs :: Config -> Name -> IO [(DN, Attribute, FromTo)]
-getRewriteAttrs conf x = do
-    ft <- (fromJust <$> C.lookup conf x) :: IO [[String]]
-    return $ map (\[dn, a, f, t] -> (dn, a, (f, t))) ft
-
 updateDIT :: Config -> [LDIF] -> [LDIF] -> IO ()
 updateDIT conf s t = do
     ldap <- bindLdap conf

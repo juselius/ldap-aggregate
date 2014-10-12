@@ -92,32 +92,29 @@ genSafeString1 :: Gen String
 genSafeString1 = (:) <$> genSafeChar <*> listOf1 genSafeAlpha
 
 
-ldifDef1 :: [AttrSpec]
-ldifDef1 =
+ldifAttrs1 :: [AttrSpec]
+ldifAttrs1 =
     [ ("A", ["A1", "A2"])
     , ("B", ["B1"])
-    ]
-
-ldifDef2 :: [AttrSpec]
-ldifDef2 =
-    [ ("A", ["A1"])
     , ("C", ["C1"])
     ]
 
-ldiff1 :: [LDIF]
-ldiff1 = [
-      ("B", LDIFAdd [LDAPMod LdapModAdd "A" ["A1"]])
-    , ("A", LDIFDelete)
+ldifAttrs2 :: [AttrSpec]
+ldifAttrs2 =
+    [ ("A", ["A1"])
+    , ("B", ["B2"])
+    , ("D", ["D1"])
     ]
 
-ldiff2 :: [LDIF]
-ldiff2 = [
-      ("A", LDIFAdd [ LDAPMod LdapModAdd "A" ["A1", "A2"]
-                         , LDAPMod LdapModAdd "B" ["B1"]
-                         ]
-           )
-    , ("B", LDIFDelete)
-    ]
+(testLdif1, testLdif2) = bimap1 (uncurry genLdif) (l1, l2)
+    where
+        l1 = ("dc=foo,dc=com", ldifAttrs1)
+        l2 = ("dc=foo,dc=com", ldifAttrs2)
+
+(testLdif1', testLdif2') = bimap1 (uncurry genLdif) (l1, l2)
+    where
+        l1 = ("dc=bar,dc=org", ldifAttrs1)
+        l2 = ("dc=bar,dc=org", ldifAttrs2)
 
 sampleLdif = sample' (arbitrary :: Gen LdifStr)
 

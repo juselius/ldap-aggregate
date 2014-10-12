@@ -20,64 +20,64 @@ rewriteTests = testGroup "LDAPRewrite" [
     , testCase "filter attrs" $ testFilterAttrs @?= True
     ]
 
-testRewriteDN = newDN == genLdif "dc=oof,dc=com" ldifDef1
+testRewriteDN = newDN == genLdif "dc=oof,dc=com" ldifAttrs1
     where
-        [newDN] = rewriteDn fs [ldif1]
+        [newDN] = rewriteDn fs [testLdif1]
         fs = map makeRewriteDn [["foo", "oof"], ["com", "moc"]]
 
 testRewriteAttrs = rewritten == ldiff
     where
-        [rewritten] = rewriteAttrs attrs [ldif1]
+        [rewritten] = rewriteAttrs attrs [testLdif1]
         attrs = map makeRewriteAttrs [
             ["A", "^A1$", "a1"]
             , ["B", "B1", "hubba"]
             ]
-        ldiff = uncurry genLdif ("dc=foo,dc=com", [
-              ("A", ["a1", "A2"])
+        ldiff = genLdif "dc=foo,dc=com"
+            [ ("A", ["a1", "A2"])
             , ("B", ["hubba"])
-            ])
+            , ("C", ["C1"])
+            ]
 
 testFilterDnId = filtered == ldiff
     where
-        [filtered] = filterDn attrs [ldif1]
+        [filtered] = filterDn attrs [testLdif1]
         attrs = map makeDnFilter []
-        ldiff = uncurry genLdif ("dc=foo,dc=com",
+        ldiff = genLdif "dc=foo,dc=com"
             [ ("A", ["A1", "A2"])
             , ("B", ["B1"])
-            ])
+            , ("C", ["C1"])
+            ]
 
 testFilterDn = filtered == ldiff
     where
-        [filtered] = filterDn attrs [ldif1, ldif2]
+        [filtered] = filterDn attrs [testLdif1, testLdif1']
         attrs = map makeDnFilter ["bar"]
-        ldiff = uncurry genLdif ("dc=foo,dc=com",
+        ldiff = genLdif "dc=foo,dc=com"
             [ ("A", ["A1", "A2"])
             , ("B", ["B1"])
-            ])
+            , ("C", ["C1"])
+            ]
 
 testFilterAttrsId = filtered == ldiff
     where
-        [filtered] = filterEntries attrs [ldif1]
+        [filtered] = filterEntries attrs [testLdif1]
         attrs = map makeAttrFilter []
-        ldiff = uncurry genLdif ("dc=foo,dc=com",
+        ldiff = genLdif "dc=foo,dc=com"
             [ ("A", ["A1", "A2"])
             , ("B", ["B1"])
-            ])
+            , ("C", ["C1"])
+            ]
 
 testFilterAttrs =
-    trace (unwords
-    ["\n", showLDIF filtered , "\nvs.\n", showLDIF ldiff])
+    --trace (unwords
+    --["\n", showLDIF filtered , "\nvs.\n", showLDIF ldiff])
     filtered == ldiff
     where
-        [filtered] = filterEntries attrs [ldif1]
+        [filtered] = filterEntries attrs [testLdif1]
         attrs = map makeAttrFilter [["", "A", "A2"]]
-        ldiff = uncurry genLdif ("dc=foo,dc=com",
+        ldiff = genLdif "dc=foo,dc=com"
             [ ("A", ["A1"])
             , ("B", ["B1"])
-            ])
-
-(ldif1, ldif2) = bimap1 (uncurry genLdif) (l1, l2)
-    where
-        l1 = ("dc=foo,dc=com", ldifDef1)
-        l2 = ("dc=bar,dc=org", ldifDef2)
+            , ("C", ["C1"])
+            ]
 

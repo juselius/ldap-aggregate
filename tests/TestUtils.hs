@@ -21,6 +21,18 @@ import qualified Data.ByteString.Char8 as BS
 import LDAPRelay.Rewrite
 import LDAPRelay.DirectoryTree
 
+-- | Convert a LDIF string of LDAP search results to LDAPMod for add
+ldifStr2LdapAdd :: BC.ByteString -> [(String, [LDAPMod])]
+ldifStr2LdapAdd str =
+        map toMod ldif
+    where
+        ldif = extractEntries $ parseLdifStr "" str
+        extractEntries = either (error . show) id
+        toMod (dn, LDIFEntry x) = (dn, ldapEntry2Add x)
+        toMod (dn, LDIFAdd x) = (dn, x)
+        toMod (dn, _) = (dn, [])
+
+
 clearTree' :: String -> IO ()
 clearTree' tree = do
     ldap <- bindDIT "ldap://localhost:389" ("cn=admin" ++ tree) "secret"

@@ -12,7 +12,6 @@ module LDIF.Utils (
 
 import LDIF.Types
 import Data.List
-import Data.Maybe
 import qualified Data.HashMap.Lazy as HM
 import Control.Arrow ((***))
 import Control.Monad
@@ -21,12 +20,9 @@ toHashMap :: [LDIF] -> HM.HashMap DN LDIFRecord
 toHashMap = HM.fromList
 
 isUniqDN :: [LDIF] -> Bool
-isUniqDN xs = case hasDuplicates xs of
-        Just _ -> False
-        Nothing -> True
+isUniqDN xs = length xs == length xs'
     where
-        hasDuplicates x = listToMaybe $
-            nubBy (\(dn, _) (dn', _) -> dn == dn') x
+        xs' = nubBy (\(dn, _) (dn', _) -> dn == dn') xs
 
 bimap1 :: (a -> b) -> (a, a) -> (b, b)
 bimap1 = join (***)

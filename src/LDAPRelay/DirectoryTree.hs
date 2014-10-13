@@ -49,7 +49,7 @@ runLdif ldap =
     mapM_ runMod
     where
         runMod (dn, entry) = case entry of
-            LDIFEntry e -> ldapAdd ldap dn (ldapEntry2Add e)
+            LDIFEntry e -> ldapAdd ldap dn (ldapEntryToAdd e)
             LDIFAdd e -> ldapAdd ldap dn e
             LDIFChange e -> ldapModify ldap dn e
             LDIFDelete -> ldapDelete ldap dn

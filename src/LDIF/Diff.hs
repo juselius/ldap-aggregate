@@ -3,7 +3,6 @@
 --
 module LDIF.Diff (
       diffLDIF
-    , diffRecord
     , diffAttrs
 ) where
 
@@ -13,19 +12,13 @@ import LDAP.Modify (list2ldm)
 import Data.Maybe
 import Control.Arrow (second)
 
--- | Calculate difference between two LDAP entries
-diffRecord :: LDIFRecord -> LDIFRecord -> LDIFRecord
-diffRecord r1 r2 = diffAttrs (getEntry r1) (getEntry r2)
-    where
-        getEntry = leattrs . fromJust . ldifRecord2Entry []
-
 -- | Calculate Change LDIF between two LDIF contents.
 -- If there is not difference the empty change list is returned.
 diffLDIF :: [LDIF] -> [LDIF] -> [LDIF]
 diffLDIF r1 r2 = diffLDAP x1 x2
     where
         (x1, x2) = bimap1 (map toEntry) (r1, r2)
-        toEntry (dn, e) = fromJust $ ldifRecord2Entry dn e
+        toEntry (dn, e) = fromJust $ ldifRecordToEntry dn e
 
 diffLDAP :: [LDAPEntry] -> [LDAPEntry] -> [LDIF]
 diffLDAP r1 r2 = adds ++ deletes ++ changes

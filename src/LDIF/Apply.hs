@@ -18,7 +18,7 @@ applyLdif :: [LDIF] -> [LDIF] -> Either String [LDIF]
 applyLdif mods ldif = runIdentity . runErrorT $
     applyLdif' ops ldif
     where
-        ops = map ldifEntry2Add mods
+        ops = map ldifEntryToAdd mods
 
 applyLdif' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
 applyLdif' mods ldif = do
@@ -34,7 +34,7 @@ applyLdif' mods ldif = do
 addLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
 addLdif ldif (dn, a) =
     if isNothing $ lookup dn ldif
-    then return $ (dn, LDIFEntry (fromJust $ ldifRecord2Entry dn a)):ldif
+    then return $ (dn, LDIFEntry (fromJust $ ldifRecordToEntry dn a)):ldif
     else throwError $ "Entry already exists, dn: " ++ dn
 
 delLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
@@ -72,7 +72,7 @@ applyAttr attrs (LDAPMod op name vals) = return $
             delAttr v = if null (delv v) then rest else (name, delv v):rest
             replaceAttr = (name, vals):rest
             rest = deleteBy cmpfst (name, []) attrs
-            delv v = foldl' (\acc x -> deleteBy (==) x acc) v vals
+            delv v = foldl' (flip delete) v vals
 
 isAdd :: Ldif -> Bool
 isAdd (_, LDIFAdd _) = True

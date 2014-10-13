@@ -15,12 +15,10 @@ module LDIF.Types (
     , liftLdif
     , liftLdif'
     , showLDIF
-    , isLdapEntry
-    , collectLdapEntries
-    , ldapEntry2Add
-    , ldifEntry2Add
-    , ldapEntry2LDIF
-    , ldifRecord2Entry
+    , ldapEntryToAdd
+    , ldifEntryToAdd
+    , ldapEntryToLDIF
+    , ldifRecordToEntry
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -103,32 +101,23 @@ liftLdif' f l = case l of
     (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry (f dn) av
     _ -> l
 
-isLdapEntry :: LDIFRecord -> Bool
-isLdapEntry = \case
-    LDIFEntry _ -> True
-    LDIFAdd _ -> True
-    _ -> False
-
-collectLdapEntries :: [LDIF] -> [LDIF]
-collectLdapEntries = filter (\(_, e) -> isLdapEntry e)
-
 -- | Convert any LDIFEntry in LDIF to LDIFAdd
-ldifEntry2Add :: LDIF -> LDIF
-ldifEntry2Add (dn, LDIFEntry e) = (dn, LDIFAdd (ldapEntry2Add e))
-ldifEntry2Add l = l
+ldifEntryToAdd :: LDIF -> LDIF
+ldifEntryToAdd (dn, LDIFEntry e) = (dn, LDIFAdd (ldapEntryToAdd e))
+ldifEntryToAdd l = l
 
 -- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
-ldapEntry2Add :: LDAPEntry -> [LDAPMod]
-ldapEntry2Add (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
+ldapEntryToAdd :: LDAPEntry -> [LDAPMod]
+ldapEntryToAdd (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
 
-ldapEntry2LDIF :: LDAPEntry -> LDIF
-ldapEntry2LDIF e@(LDAPEntry dn _) = (dn, LDIFEntry e)
+ldapEntryToLDIF :: LDAPEntry -> LDIF
+ldapEntryToLDIF e@(LDAPEntry dn _) = (dn, LDIFEntry e)
 
 -- | Convert LDIFAdd to LDAPEntry
-ldifRecord2Entry :: DN -> LDIFRecord -> Maybe LDAPEntry
-ldifRecord2Entry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
+ldifRecordToEntry :: DN -> LDIFRecord -> Maybe LDAPEntry
+ldifRecordToEntry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
     where
         dlm2list = foldr (\(LDAPMod _ a v) x -> (a, v):x) [] e
-ldifRecord2Entry _ (LDIFEntry e) = Just e
-ldifRecord2Entry _ _ = Nothing
+ldifRecordToEntry _ (LDIFEntry e) = Just e
+ldifRecordToEntry _ _ = Nothing
 

@@ -4,8 +4,9 @@ module Main where
 
 import System.Environment
 import System.IO
+import LDAPRelay
+import LDIF
 import qualified Data.ByteString.Char8 as BS
-import LDAPRelay.DirectoryTree
 
 main :: IO ()
 main = do
@@ -13,7 +14,7 @@ main = do
     doS
     where
         doS = do
-            ldap <- bindDIT "dc=source"
+            ldap <- bindDIT "ldap://localhost" "cn=admin,dc=source" "secret"
             ldif <- readLdif "./ldif/source.update.ldif"
             let l = parseLdif ldif
             print l

@@ -68,7 +68,7 @@ getDir conf = do
     ldap <- bindLdap conf
     base   <- fromJust <$> C.lookup conf "base"
     ldif <- getDIT ldap base
-    return $ map ldapEntry2LDIF ldif
+    return $ map ldapEntryToLDIF ldif
 
 bindLdap :: Config -> IO LDAP
 bindLdap conf = do

@@ -23,29 +23,35 @@ module LDIF.Types (
 
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as S
 
 type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
-type LDIF = (DN, LDIFRecord)
+
+data LDIF = LDIF (M.HashMap DN LDIFRecord)
 
 data LDIFRecord =
-      LDIFEntry  LDAPEntry
-    | LDIFAdd    [LDAPMod]
-    | LDIFChange [LDAPMod]
-    | LDIFDelete
+      LDIFEntry {
+          recDn :: DN
+        , recAttrs :: M.HashMap Attribute (S.HashSet Value)
+        }
+    | LDIFChange {
+          recDn :: DN
+        , recMod :: M.HashMap Attribute (M.HashMap LDAPModOp Value)
+        }
+    | LDIFDelete { recDn :: DN } deriving (Eq)
 
 instance Show LDIFRecord where
     show = \case
-        (LDIFEntry (LDAPEntry dn av)) -> "dn: " ++ dn ++ "\n"
+        LDIFEntry dn av -> "dn: " ++ dn ++ "\n"
             ++ (unlines . concatMap pprint $ av)
-        (LDIFAdd mods) -> unlines . concatMap pprintAdd $ mods
-        (LDIFChange mods) -> pprintChange mods
+        LDIFChange dn  -> pprintChange mods
         _ -> ""
         where
-            pprint (a, v) = map (curry printAttrs a) v
-            pprintAdd (LDAPMod _ a v) = map (curry printAttrs a) v
+            pprint av = map printAttrs $ H.toList av
             pprintChange mods = unlines . map printMod $ mods
             printAttrs (a, v) = a ++ ": " ++ v
             printMod (LDAPMod op a v) = printOp op a
@@ -54,13 +60,6 @@ instance Show LDIFRecord where
             printOp LdapModDelete a = "delete: " ++ a ++ "\n"
             printOp LdapModReplace a = "replace: " ++ a ++ "\n"
             printOp _ a = "unknown: " ++ a ++ "\n"
-
-instance Eq LDIFRecord where
-    (==) (LDIFEntry e1)  (LDIFEntry e2)  = e1 `cmpEntry` e2
-    (==) (LDIFAdd e1)    (LDIFAdd e2)    = cmpMod e1 e2
-    (==) (LDIFChange e1) (LDIFChange e2) = cmpMod e1 e2
-    (==) (LDIFDelete)    (LDIFDelete)    = True
-    (==) _ _ = False
 
 cmpEntry :: LDAPEntry -> LDAPEntry -> Bool
 cmpEntry (LDAPEntry _ e1) (LDAPEntry _ e2) = all cmp e1

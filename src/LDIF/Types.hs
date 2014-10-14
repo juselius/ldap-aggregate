@@ -12,17 +12,17 @@ module LDIF.Types (
     , Attribute
     , Value
     , AttrSpec
+    , Attrs
     , liftLdif
     , liftLdif'
-    , showLDIF
-    , ldapEntryToAdd
-    , ldifEntryToAdd
-    , ldapEntryToLDIF
-    , ldifRecordToEntry
+    --, ldapToLdif
+    --, ldifToLdap
 ) where
 
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
+import Data.Hashable
+import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S
 
@@ -30,93 +30,66 @@ type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
+type Attrs a = M.HashMap Attribute (S.HashSet a)
 
 data LDIF = LDIF (M.HashMap DN LDIFRecord)
+data LDAPRecod = LDAPEntry | LDAPMod
 
 data LDIFRecord =
       LDIFEntry {
-          recDn :: DN
-        , recAttrs :: M.HashMap Attribute (S.HashSet Value)
+          recDn    :: DN
+        , recAttrs :: Attrs Value
         }
     | LDIFChange {
-          recDn :: DN
-        , recMod :: M.HashMap Attribute (M.HashMap LDAPModOp Value)
+          recDn   :: DN
+        , recMods :: Attrs (LDAPModOp, Value)
         }
-    | LDIFDelete { recDn :: DN } deriving (Eq)
+    | LDIFDelete {
+          recDn   :: DN
+        } deriving (Eq)
+
+instance Hashable LDAPModOp where
+    hash = fromEnum
+    hashWithSalt s a = s `hashWithSalt` fromEnum a
 
 instance Show LDIFRecord where
     show = \case
-        LDIFEntry dn av -> "dn: " ++ dn ++ "\n"
-            ++ (unlines . concatMap pprint $ av)
-        LDIFChange dn  -> pprintChange mods
-        _ -> ""
+        LDIFEntry dn av -> formatDn dn ++ "changetype: add\n"
+            ++ pprint formatEntry av
+        LDIFChange dn av -> formatDn dn ++ "changetype: modify\n"
+            ++ pprint formatChange av
+        LDIFDelete dn -> formatDn dn ++ "changetype: delete"
         where
-            pprint av = map printAttrs $ H.toList av
-            pprintChange mods = unlines . map printMod $ mods
-            printAttrs (a, v) = a ++ ": " ++ v
-            printMod (LDAPMod op a v) = printOp op a
-                ++ (unlines . map printAttrs $ zip (repeat a) v) ++ "-"
-            printOp LdapModAdd a = "add: " ++ a ++ "\n"
-            printOp LdapModDelete a = "delete: " ++ a ++ "\n"
-            printOp LdapModReplace a = "replace: " ++ a ++ "\n"
-            printOp _ a = "unknown: " ++ a ++ "\n"
+            pprint f av = concatMap f . map (second S.toList) $ M.toList av
+            formatEntry (a, v) = showAttrs $ zip (repeat a) v
+            formatChange (a, v) = showMod $ zip (repeat a) v
+            showAttrs = unlines . map (\(a, v) -> a ++ ": " ++ v)
+            showMod = unlines . map (\(a, (op, v)) ->
+                formatOp op a ++ a ++ ": " ++ v ++ "\n-")
+                where
+                    formatOp LdapModAdd a = "add: " ++ a ++ "\n"
+                    formatOp LdapModDelete a = "delete: " ++ a ++ "\n"
+                    formatOp LdapModReplace a = "replace: " ++ a ++ "\n"
+                    formatOp _ a = "unknown: " ++ a ++ "\n"
+            formatDn dn = "dn: " ++ dn ++ "\n"
 
-cmpEntry :: LDAPEntry -> LDAPEntry -> Bool
-cmpEntry (LDAPEntry _ e1) (LDAPEntry _ e2) = all cmp e1
-    where
-        cmp (a, v) = maybe False (all (`elem` v)) $ lookup a e2
-
-cmpMod :: [LDAPMod] -> [LDAPMod] -> Bool
-cmpMod e1 e2 = (length e1 == length e2) && and (zipWith cmp e1 e2)
-    where
-        cmp (LDAPMod o1 a1 v1) (LDAPMod o2 a2 v2) = (o1 == o2)
-            && (a1 == a2)
-            && all (`elem` v2) v1
-
-
-showLDIF :: LDIF -> String
-showLDIF (dn, r) = case r of
-        LDIFEntry _  -> formatEntry [] [] r
-        LDIFChange _ -> formatEntry dn "modify" r
-        LDIFAdd _    -> formatEntry dn "add" r
-        LDIFDelete   -> formatEntry dn "delete" r
-        where
-            formatEntry dn' s x =
-                   (if null dn' then "" else "dn: " ++ dn' ++ "\n")
-                ++ (if null s then "" else "changetype: " ++ s ++ "\n")
-                ++ show x
-
-liftLdif :: ([AttrSpec] -> [AttrSpec]) -> LDIFRecord -> LDIFRecord
+liftLdif :: (Attribute -> Value -> Value) -> LDIFRecord -> LDIFRecord
 liftLdif f l = case l of
-    (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry dn (f av)
-    (LDIFAdd x) -> LDIFAdd $ map applyf x
-    (LDIFChange x) -> LDIFChange $ map applyf x
-    LDIFDelete -> LDIFDelete
+    LDIFEntry  _ av -> l { recAttrs = M.mapWithKey applyf  av }
+    LDIFChange _ av -> l { recMods  = M.mapWithKey applyf' av }
+    LDIFDelete _    -> l
     where
-        applyf (LDAPMod op a v) = LDAPMod op a $ snd $ head (f [(a, v)])
+        applyf  k v = S.map (f k) v
+        applyf' k v = S.map (second (f k)) v
 
 liftLdif' :: (DN -> DN) -> LDIFRecord -> LDIFRecord
-liftLdif' f l = case l of
-    (LDIFEntry (LDAPEntry dn av)) ->  LDIFEntry $ LDAPEntry (f dn) av
-    _ -> l
+liftLdif' f l = l { recDn = f $ recDn l }
 
--- | Convert any LDIFEntry in LDIF to LDIFAdd
-ldifEntryToAdd :: LDIF -> LDIF
-ldifEntryToAdd (dn, LDIFEntry e) = (dn, LDIFAdd (ldapEntryToAdd e))
-ldifEntryToAdd l = l
+--ldapToLdif :: [a] -> LDIF
+--ldap2Ldif x = map  x
+    -- \case
+    --LDAPEntry dn av ->
 
--- | Convert LDAPEntry to a list of LDAPMod for ldapAdd
-ldapEntryToAdd :: LDAPEntry -> [LDAPMod]
-ldapEntryToAdd (LDAPEntry _ av) = map (uncurry (LDAPMod LdapModAdd)) av
+--ldifToLdap :: LDIF -> LDAP
 
-ldapEntryToLDIF :: LDAPEntry -> LDIF
-ldapEntryToLDIF e@(LDAPEntry dn _) = (dn, LDIFEntry e)
-
--- | Convert LDIFAdd to LDAPEntry
-ldifRecordToEntry :: DN -> LDIFRecord -> Maybe LDAPEntry
-ldifRecordToEntry dn (LDIFAdd e) = Just $ LDAPEntry dn dlm2list
-    where
-        dlm2list = foldr (\(LDAPMod _ a v) x -> (a, v):x) [] e
-ldifRecordToEntry _ (LDIFEntry e) = Just e
-ldifRecordToEntry _ _ = Nothing
 

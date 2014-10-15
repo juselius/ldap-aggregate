@@ -13,14 +13,14 @@ module LDIF.Types (
     , Value
     , AttrSpec
     , Attrs
+    , mapLdif
     , liftLdif
-    , liftLdif'
-    --, ldapToLdif
-    --, ldifToLdap
+    , ldapToLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
+import Data.Maybe
 import Data.Hashable
 import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M
@@ -30,22 +30,22 @@ type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
+
 type Attrs a = M.HashMap Attribute (S.HashSet a)
 
-data LDIF = LDIF (M.HashMap DN LDIFRecord)
-data LDAPRecod = LDAPEntry | LDAPMod
+type LDIF = M.HashMap DN LDIFRecord
 
 data LDIFRecord =
       LDIFEntry {
-          recDn    :: DN
-        , recAttrs :: Attrs Value
+          rDn    :: DN
+        , rAttrs :: Attrs String
         }
     | LDIFChange {
-          recDn   :: DN
-        , recMods :: Attrs (LDAPModOp, Value)
+          rDn   :: DN
+        , rMods :: Attrs (LDAPModOp, String)
         }
     | LDIFDelete {
-          recDn   :: DN
+          rDn   :: DN
         } deriving (Eq)
 
 instance Hashable LDAPModOp where
@@ -73,23 +73,21 @@ instance Show LDIFRecord where
                     formatOp _ a = "unknown: " ++ a ++ "\n"
             formatDn dn = "dn: " ++ dn ++ "\n"
 
-liftLdif :: (Attribute -> Value -> Value) -> LDIFRecord -> LDIFRecord
-liftLdif f l = case l of
-    LDIFEntry  _ av -> l { recAttrs = M.mapWithKey applyf  av }
-    LDIFChange _ av -> l { recMods  = M.mapWithKey applyf' av }
+mapLdif :: (Attribute -> Value -> Value) -> LDIFRecord -> LDIFRecord
+mapLdif f l = case l of
+    LDIFEntry  _ av -> l { rAttrs = M.mapWithKey applyf  av }
+    LDIFChange _ av -> l { rMods  = M.mapWithKey applyf' av }
     LDIFDelete _    -> l
     where
         applyf  k v = S.map (f k) v
         applyf' k v = S.map (second (f k)) v
 
-liftLdif' :: (DN -> DN) -> LDIFRecord -> LDIFRecord
-liftLdif' f l = l { recDn = f $ recDn l }
+liftLdif :: (DN -> DN) -> LDIFRecord -> LDIFRecord
+liftLdif f l = l { rDn = f $ rDn l }
 
---ldapToLdif :: [a] -> LDIF
---ldap2Ldif x = map  x
-    -- \case
-    --LDAPEntry dn av ->
-
---ldifToLdap :: LDIF -> LDAP
-
+ldapToLdif :: [LDAPEntry] -> LDIF
+ldapToLdif x = M.fromList $ map toll x
+    where
+        toll (LDAPEntry dn av) = (dn, LDIFEntry dn (M.fromList $ map toat av))
+        toat (a, v) = (a, S.fromList v)
 

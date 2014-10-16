@@ -16,6 +16,8 @@ module LDIF.Types (
     , mapLdif
     , liftLdif
     , ldapToLdif
+    , makeEntryLdif
+    , makeChangeLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -90,4 +92,10 @@ ldapToLdif x = M.fromList $ map toll x
     where
         toll (LDAPEntry dn av) = (dn, LDIFEntry dn (M.fromList $ map toat av))
         toat (a, v) = (a, S.fromList v)
+
+makeEntryLdif :: DN -> Attribute -> [Value]-> LDIFRecord
+makeEntryLdif dn a v = LDIFEntry dn (M.singleton a (S.fromList v))
+
+makeChangeLdif :: DN -> LDAPModOp -> Attribute -> [Value]-> LDIFRecord
+makeChangeLdif dn op a v = LDIFChange dn (M.singleton a (S.fromList (zip (repeat op) v)))
 

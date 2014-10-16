@@ -11,9 +11,9 @@
 
 module LDIF.Parser (
       parseLdifStr
+    , parseLdifStr'
     , parseLdif
-    , LDIF
-    , LDIFRecord(..)
+    , parseLdif'
 ) where
 
 import Prelude
@@ -21,16 +21,29 @@ import Data.List
 import Control.Monad
 import LDIF.Types
 import LDIF.Preproc
+import Data.Hashable
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.ByteString
+import Control.Arrow (second)
 import qualified Data.ByteString.Char8 as BC
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as S
 
-parseLdif :: BC.ByteString -> [LDIF]
+parseLdif :: BC.ByteString -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
+parseLdif' :: BC.ByteString -> [(DN, LDIFRecord)]
+parseLdif' ldif = either (error . show) id (parseLdifStr' [] ldif)
+
 -- | Parse LDIF content
-parseLdifStr :: FilePath -> BC.ByteString -> Either ParseError [LDIF]
-parseLdifStr name xs = case eldif of
+parseLdifStr :: FilePath -> BC.ByteString -> Either ParseError LDIF
+parseLdifStr name xs = case parseLdifStr' name xs of
+    Left err -> Left err
+    Right ldif -> Right $ M.fromList ldif
+
+parseLdifStr' :: FilePath -> BC.ByteString
+    -> Either ParseError [(DN, LDIFRecord)]
+parseLdifStr' name xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
     where
@@ -38,7 +51,7 @@ parseLdifStr name xs = case eldif of
         eldif = parse pLdif name input
 
 -- | Parsec ldif parser
-pLdif :: Parser [LDIF]
+pLdif :: Parser [(DN, LDIFRecord)]
 pLdif = do
     pSEPs
     void $ optionMaybe pVersionSpec
@@ -63,7 +76,7 @@ pLdif = do
             void pSafeString
             pSEPs
 
-pRec :: Parser LDIF
+pRec :: Parser (DN, LDIFRecord)
 pRec = do
     dn <- pDNSpec
     pSEP
@@ -78,45 +91,38 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return (dn, r)
+            return (dn, r { rDn = dn })
         pAttrValRec dn = do
-            x <- pLdapEntry dn
-            return (dn, LDIFEntry x)
+            r <- pLdapEntry
+            return (dn, r { rDn = dn })
 
 
-pLdapEntry :: DN -> Parser LDAPEntry
-pLdapEntry dn = do
+pLdapEntry :: Parser LDIFRecord
+pLdapEntry = do
     attrVals <- sepEndBy1 pAttrValSpec pSEP
-    return $ LDAPEntry dn (collect attrVals)
-    where
-        collect = map gather . groupBy cmpfst
-        gather xs = (fst (head xs), concatMap snd xs)
-        cmpfst (a, _) (b, _) = a == b
+    return $ LDIFEntry [] (avToAttrs attrVals)
 
 pChangeAdd :: Parser LDIFRecord
 pChangeAdd = do
     void $ string "add"
     pSEP
-    entry <- pLdapEntry []
-    return . LDIFAdd $ ldapEntryToAdd entry
-    where
+    pLdapEntry
 
 pChangeDel :: Parser LDIFRecord
 pChangeDel = do
     void $ string "delete"
     pSEP
     void $ sepEndBy pAttrValSpec pSEP
-    return LDIFDelete
+    return $ LDIFDelete []
 
 pChangeMod :: Parser LDIFRecord
 pChangeMod = do
     void $ string "modify"
     pSEP
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
-    return $ LDIFChange mods
+    return . LDIFChange [] $ M.unions mods
 
-
-pModSpec :: Parser LDAPMod
+pModSpec :: Parser (Attrs (LDAPModOp, Value))
 pModSpec = do
    modStr <- pModType
    pFILL
@@ -125,16 +131,20 @@ pModSpec = do
    attrs <- sepEndBy pAttrValSpec pSEP
    return $ mkMod modStr attrs
 
-mkMod :: String -> [AttrSpec] -> LDAPMod
+mkMod :: String -> [AttrSpec] -> Attrs (LDAPModOp, Value)
 mkMod modStr av
     | modStr == "add:" = toRec LdapModAdd
     | modStr == "delete:" = toRec LdapModDelete
     | modStr == "replace:" = toRec LdapModReplace
     | otherwise = error $ "unexpected mod:" ++ modStr
     where
-        toRec op = LDAPMod op attrName attrs
-        attrName = fst . head $ av
-        attrs = concatMap snd av
+        toRec op = avToAttrs $ map (second (zip (repeat op))) av
+
+avToAttrs :: (Eq a, Hashable a) => [(Attribute, [a])] -> Attrs a
+avToAttrs av =
+    foldl' (\acc (a, s) -> M.insertWith S.union a s acc) M.empty avSets
+    where
+        avSets = map (second S.fromList) av
 
 pDN :: Parser DN
 pDN = do

@@ -3,38 +3,48 @@
 --
 module LDIF.Diff (
       diffLDIF
-    , diffAttrs
 ) where
 
 import LDIF.Types
-import LDIF.Utils
-import LDAP.Modify (list2ldm)
 import Data.Maybe
 import Control.Arrow (second)
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as S
 
 -- | Calculate Change LDIF between two LDIF contents.
 -- If there is not difference the empty change list is returned.
-diffLDIF :: [LDIF] -> [LDIF] -> [LDIF]
-diffLDIF r1 r2 = diffLDAP x1 x2
+diffLDIF :: LDIF -> LDIF -> LDIF
+diffLDIF l1 l2 = diffEntries l1' l2'
     where
-        (x1, x2) = bimap1 (map toEntry) (r1, r2)
-        toEntry (dn, e) = fromJust $ ldifRecordToEntry dn e
+        l1' = M.filter isNotMod l1
+        l2' = M.filter isNotMod l2
+        isNotMod (LDIFEntry _ _) = True
+        isNotMod _ = False
 
-diffLDAP :: [LDAPEntry] -> [LDAPEntry] -> [LDIF]
-diffLDAP r1 r2 = adds ++ deletes ++ changes
+diffEntries :: LDIF -> LDIF -> LDIF
+diffEntries l1 l2 = M.unions [adds, deletes, changes]
     where
-        adds = map e2add $ filter (not . isEntryIn l1) l2
-        (changes, deletes) = foldr processEntry ([], []) l1
-        [l1, l2] = map (map (\(LDAPEntry dn av) -> (dn, av))) [r1, r2]
-        e2add = second (LDIFAdd . list2ldm LdapModAdd)
-        processEntry (dn, e1) (cx, dx) = maybe delRec chRec (lookup dn l2)
-            where
-                chRec e2 = (diffToLdif e2:cx, dx)
-                delRec = (cx, (dn, LDIFDelete):dx)
-                diffToLdif e2 = (dn, diffAttrs e1 e2)
+        adds = l2 `M.difference` l1
+        deletes = l1 `M.difference` (l2 `M.difference` adds)
+        changes = M.map (uncurry diffRecords . pairup l1') l2'
+        l1' = (l1 `M.difference` adds) `M.difference` deletes
+        l2' = (l2 `M.difference` adds) `M.difference` deletes
+        pairup a b = (fromJust $ M.lookup (rDn b) a, b)
 
-diffAttrs :: [AttrSpec] -> [AttrSpec] -> LDIFRecord
-diffAttrs r1 r2 = LDIFChange $ adds ++ deletes ++ changes
+diffRecords :: LDIFRecord -> LDIFRecord -> LDIFRecord
+diffRecords (LDIFEntry dn r1) (LDIFEntry _ r2) =
+    LDIFChange dn $ M.unions [adds, deletes, changes]
+    where
+        adds = setOp LdapModAdd $ r2 `M.difference` r1
+        deletes = setOp LdapModDelete $
+            r1 `M.difference` (r2 `M.difference` adds)
+        changes = diffValues r1' r2'
+        r1' = (r1' `M.difference` adds) `M.difference` deletes
+        r2' = (r2' `M.difference` adds) `M.difference` deletes
+        setOp op = M.map (S.map ((,) op))
+
+diffValues :: LDIFRecord -> LDIFRecord -> LDIFRecord
+diffValues v1 v2 = S.unions $ [adds, deletes]
     where
         adds = map a2add $ filter (not . isEntryIn r1) r2
         a2add (a, v) = LDAPMod LdapModAdd a v
@@ -48,8 +58,8 @@ diffAttrs r1 r2 = LDIFChange $ adds ++ deletes ++ changes
                         add' = map (\x -> LDAPMod LdapModAdd a [x]) adds'
                         del' = map (\x -> LDAPMod LdapModDelete a [x]) dels
 
-diffValues :: [Value] -> [Value] -> ([Value], [Value])
-diffValues r1 r2 = (sift r1 r2, sift r2 r1)
+{-diffValues :: [Value] -> [Value] -> ([Value], [Value])-}
+{-diffValues r1 r2 = (sift r1 r2, sift r2 r1)-}
 
 sift :: Eq a => [a] -> [a] -> [a]
 sift x = filter (not . flip elem x)

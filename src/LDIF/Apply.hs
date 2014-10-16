@@ -10,17 +10,15 @@ import Data.Maybe
 import Data.List
 import Control.Monad.Error
 import Control.Monad.Identity
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as S
 
 type ApplyError = ErrorT String Identity
-type Ldif = (DN, LDIFRecord)
 
-applyLdif :: [LDIF] -> [LDIF] -> Either String [LDIF]
-applyLdif mods ldif = runIdentity . runErrorT $
-    applyLdif' ops ldif
-    where
-        ops = map ldifEntryToAdd mods
+applyLdif :: [Ldif] -> LDIF -> Either String LDIF
+applyLdif mods ldif = runIdentity . runErrorT $ applyLdif' mods ldif
 
-applyLdif' :: [Ldif] -> [Ldif] -> ApplyError [Ldif]
+applyLdif' :: [Ldif] -> LDIF -> ApplyError LDIF
 applyLdif' mods ldif = do
     l1 <- runAdd ldif
     l2 <- runMod l1
@@ -31,60 +29,59 @@ applyLdif' mods ldif = do
         runMod = runOp modLdif isMod
         runOp op p l = foldM op l $ filter p mods
 
-addLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
+addLdif :: LDIF -> Ldif -> ApplyError LDIF
 addLdif ldif (dn, a) =
-    if isNothing $ lookup dn ldif
-    then return $ (dn, LDIFEntry (fromJust $ ldifRecordToEntry dn a)):ldif
+    if isNothing $ M.lookup dn ldif
+    then return $ M.insert dn a ldif
     else throwError $ "Entry already exists, dn: " ++ dn
 
-delLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
-delLdif ldif m@(dn, _) =
-    if isJust $ lookup dn ldif
-    then return $ deleteBy cmpfst m ldif
+delLdif :: LDIF -> Ldif -> ApplyError LDIF
+delLdif ldif (dn, _) =
+    if isJust $ M.lookup dn ldif
+    then return $ M.delete dn ldif
     else throwError $ "Entry does not exists, dn: " ++ dn
 
-modLdif :: [Ldif] -> Ldif -> ApplyError [Ldif]
-modLdif ldif m@(dn, a) =
-    case lookup dn ldif of
+modLdif :: LDIF -> Ldif -> ApplyError LDIF
+modLdif ldif (dn, a) =
+    case M.lookup dn ldif of
         Just e -> do
-            modfy <- applyEntry a e
-            return $ modfy : deleteBy cmpfst m ldif
+            a' <- applyEntry a e
+            return $ M.insert dn a' ldif
         Nothing -> throwError $ "Entry does not exists! " ++ dn
 
-applyEntry :: LDIFRecord -> LDIFRecord -> ApplyError Ldif
-applyEntry (LDIFChange m) (LDIFEntry (LDAPEntry dn l)) = do
-    attrs <- foldM applyAttr l m
-    return (dn, LDIFEntry $ LDAPEntry dn attrs)
-applyEntry (LDIFChange _) _ = throwError "Cannot apply LDAPMod to LDAPMod!"
-applyEntry (LDIFEntry _) _ = throwError "Cannot apply LDAPEntry!"
+applyEntry :: LDIFRecord -> LDIFRecord -> ApplyError LDIFRecord
+applyEntry (LDIFChange _ m) l = return $ M.foldlWithKey' applyAttr l m
 applyEntry _ _ = throwError "Invalid apply!"
 
-applyAttr :: [AttrSpec] -> LDAPMod -> ApplyError [AttrSpec]
-applyAttr attrs (LDAPMod op name vals) = return $
-    case op of
-        LdapModAdd -> maybe addAttr appendAttr (lookup name attrs)
-        LdapModDelete -> maybe attrs delAttr (lookup name attrs)
-        LdapModReplace -> replaceAttr
-        _ -> attrs
-        where
-            addAttr = (name, vals):attrs
-            appendAttr v = (name, vals ++ v):rest
-            delAttr v = if null (delv v) then rest else (name, delv v):rest
-            replaceAttr = (name, vals):rest
-            rest = deleteBy cmpfst (name, []) attrs
-            delv v = foldl' (flip delete) v vals
+applyAttr ::
+       LDIFRecord
+    -> Attribute
+    -> S.HashSet (LDAPModOp, Value)
+    -> LDIFRecord
+applyAttr (LDIFEntry dn ldif) name m = LDIFEntry dn $
+    M.filter S.null $ M.insert name (S.foldl' applyOp av m) ldif
+    where
+        av = fromMaybe S.empty $ M.lookup name ldif
+        applyOp acc (op, v) =
+            case op of
+                LdapModAdd -> S.insert v acc
+                LdapModDelete -> S.delete v acc
+                LdapModReplace -> S.insert v acc
+                _ -> acc
+applyAttr ldif _ _ = ldif
 
 isAdd :: Ldif -> Bool
-isAdd (_, LDIFAdd _) = True
+isAdd (_, LDIFEntry _ _) = True
 isAdd _ = False
 
+isMod :: Ldif -> Bool
+isMod (_, LDIFChange _ _) = True
+isMod _ = False
+
 isDel :: Ldif -> Bool
-isDel (_, LDIFDelete) = True
+isDel (_, LDIFDelete _) = True
 isDel _ = False
 
-isMod :: Ldif -> Bool
-isMod (_, LDIFChange _) = True
-isMod _ = False
 
 cmpfst :: Eq a => (a, b) -> (a, b) -> Bool
 cmpfst (a, _) (b, _) = a == b

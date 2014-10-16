@@ -32,7 +32,7 @@ import qualified Data.HashSet as S
 parseLdif :: BC.ByteString -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
-parseLdif' :: BC.ByteString -> [(DN, LDIFRecord)]
+parseLdif' :: BC.ByteString -> [Ldif]
 parseLdif' ldif = either (error . show) id (parseLdifStr' [] ldif)
 
 -- | Parse LDIF content
@@ -41,8 +41,7 @@ parseLdifStr name xs = case parseLdifStr' name xs of
     Left err -> Left err
     Right ldif -> Right $ M.fromList ldif
 
-parseLdifStr' :: FilePath -> BC.ByteString
-    -> Either ParseError [(DN, LDIFRecord)]
+parseLdifStr' :: FilePath -> BC.ByteString -> Either ParseError [Ldif]
 parseLdifStr' name xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
@@ -51,7 +50,7 @@ parseLdifStr' name xs = case eldif of
         eldif = parse pLdif name input
 
 -- | Parsec ldif parser
-pLdif :: Parser [(DN, LDIFRecord)]
+pLdif :: Parser [Ldif]
 pLdif = do
     pSEPs
     void $ optionMaybe pVersionSpec
@@ -76,7 +75,7 @@ pLdif = do
             void pSafeString
             pSEPs
 
-pRec :: Parser (DN, LDIFRecord)
+pRec :: Parser Ldif
 pRec = do
     dn <- pDNSpec
     pSEP

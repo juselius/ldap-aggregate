@@ -8,6 +8,7 @@ module LDIF.Types (
     , LDAPMod(..)
     , LDIFRecord(..)
     , LDIF
+    , Ldif
     , DN
     , Attribute
     , Value
@@ -32,9 +33,8 @@ type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
-
 type Attrs a = M.HashMap Attribute (S.HashSet a)
-
+type Ldif = (DN, LDIFRecord)
 type LDIF = M.HashMap DN LDIFRecord
 
 data LDIFRecord =

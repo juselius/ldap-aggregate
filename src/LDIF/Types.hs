@@ -23,7 +23,6 @@ module LDIF.Types (
 
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
-import Data.Maybe
 import Data.Hashable
 import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M

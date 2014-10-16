@@ -7,7 +7,6 @@ module LDIF.Diff (
 
 import LDIF.Types
 import Data.Maybe
-import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S
 
@@ -26,44 +25,33 @@ diffEntries l1 l2 = M.unions [adds, deletes, changes]
     where
         adds = l2 `M.difference` l1
         deletes = l1 `M.difference` (l2 `M.difference` adds)
-        changes = M.map (uncurry diffRecords . pairup l1') l2'
+        changes = M.mapWithKey (\k v -> diffRecords (fetch k l1') v) l2'
         l1' = (l1 `M.difference` adds) `M.difference` deletes
         l2' = (l2 `M.difference` adds) `M.difference` deletes
-        pairup a b = (fromJust $ M.lookup (rDn b) a, b)
+        fetch a b = fromJust $ M.lookup a b
 
 diffRecords :: LDIFRecord -> LDIFRecord -> LDIFRecord
 diffRecords (LDIFEntry dn r1) (LDIFEntry _ r2) =
     LDIFChange dn $ M.unions [adds, deletes, changes]
     where
-        adds = setOp LdapModAdd $ r2 `M.difference` r1
-        deletes = setOp LdapModDelete $
+        adds = setLdapOp LdapModAdd $ r2 `M.difference` r1
+        deletes = setLdapOp LdapModDelete $
             r1 `M.difference` (r2 `M.difference` adds)
-        changes = diffValues r1' r2'
+        changes = M.mapWithKey (\k v -> diffValues (fetch k r1') v) r2'
         r1' = (r1' `M.difference` adds) `M.difference` deletes
         r2' = (r2' `M.difference` adds) `M.difference` deletes
-        setOp op = M.map (S.map ((,) op))
+        fetch a b = fromJust $ M.lookup a b
+diffRecords _ _  = undefined
 
-diffValues :: LDIFRecord -> LDIFRecord -> LDIFRecord
-diffValues v1 v2 = S.unions $ [adds, deletes]
+diffValues :: S.HashSet Value -> S.HashSet Value-> S.HashSet (LDAPModOp, Value)
+diffValues v1 v2 = S.unions [
+    S.map ((,) LdapModAdd) adds,
+    S.map ((,) LdapModDelete) deletes]
     where
-        adds = map a2add $ filter (not . isEntryIn r1) r2
-        a2add (a, v) = LDAPMod LdapModAdd a v
-        (changes, deletes) = foldr processEntry ([], []) r1
-        processEntry (a, v) (cx, dx) = maybe delAttr chAttr (lookup a r2)
-            where
-                delAttr   = (cx, LDAPMod LdapModDelete a v:dx)
-                chAttr v' =  (add' ++ cx, del' ++ dx)
-                    where
-                        (adds', dels) = diffValues v v'
-                        add' = map (\x -> LDAPMod LdapModAdd a [x]) adds'
-                        del' = map (\x -> LDAPMod LdapModDelete a [x]) dels
+        adds = v2 `S.difference` v1
+        deletes = v2 `S.difference` (v2 `S.difference` adds)
 
-{-diffValues :: [Value] -> [Value] -> ([Value], [Value])-}
-{-diffValues r1 r2 = (sift r1 r2, sift r2 r1)-}
+setLdapOp :: LDAPModOp -> Attrs Value -> Attrs (LDAPModOp,Value)
+setLdapOp op = M.map (S.map ((,) op))
 
-sift :: Eq a => [a] -> [a] -> [a]
-sift x = filter (not . flip elem x)
-
-isEntryIn :: Eq a => [(a, b)] -> (a, b) -> Bool
-isEntryIn l (e, _) = isJust $ lookup e l
 

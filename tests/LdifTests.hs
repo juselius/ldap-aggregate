@@ -8,7 +8,7 @@ import LDIF
 import TestData
 import Data.List
 import Control.Arrow (second)
-import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashMap.Lazy as M
 import qualified Data.ByteString.Char8 as BS
 
 import Debug.Trace
@@ -17,27 +17,26 @@ ldifTests :: TestTree
 ldifTests = testGroup "LDIF properties" [ldifPropertyTests, ldifUnitTests]
 
 ldifPropertyTests = testGroup "LDIF properties" [
-      QC.testProperty "ldif parser is idempotent" ldifParserIdempotent
-    , QC.testProperty "ldif diff is diff ldif" ldifDiffIsDiff
-    , QC.testProperty "ldif apply diff is idempotent" ldifApplyDiffIdempotent
-    , QC.testProperty "test isUniqueDN" testIsUniqueDN
-    , QC.testProperty "test toHashMap" testToHashMap
-    , QC.testProperty "ldif lifting" testLiftLdif
+      QC.testProperty "parser is idempotent" ldifParserIdempotent
+    , QC.testProperty "diff is diff ldif" ldifDiffIsDiff
+    , QC.testProperty "apply diff is idempotent" ldifApplyDiffIdempotent
+    , QC.testProperty "lifting" testLiftLdif
     ]
 
 ldifUnitTests = testGroup "LDIF unit tests" [
-      testCase "ldif apply diff 1 2" $ ldifApplyDiff12 @?= True
-    , testCase "ldif apply diff 2 1" $ ldifApplyDiff21 @?= True
+      testCase "apply diff 1 2" $ ldifApplyDiff12 @?= True
+    , testCase "apply diff 2 1" $ ldifApplyDiff21 @?= True
     ]
 
 ldifParserIdempotent:: LdifStr -> Bool
-ldifParserIdempotent (LdifStr s) = s == l
+ldifParserIdempotent (LdifStr s) = srt s == srt l
     where
-        l = init . unlines . map showLDIF $ parseLdif $ BS.pack s
+        l = showLdif $ parseLdif $ BS.pack s
+        srt = unlines . sort . lines
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =
-        "changetype" `isInfixOf` (unlines . map showLDIF $ dl)
+        "changetype" `isInfixOf` (showLdif $ dl)
         where
             l1 = parseLdif $ BS.pack s1
             l2 = parseLdif $ BS.pack s2
@@ -50,39 +49,34 @@ ldifApplyDiffIdempotent (LdifEntryStr s1, LdifEntryStr s2) =
             l1 = parseLdif $ BS.pack s1
             l2 = parseLdif $ BS.pack s2
             dl = diffLDIF l2 l1
+            dbg = "\ndbg: " ++ "\n"
+                ++ (showLdif l1) ++ "\n"
+                ++ (showLdif l2) ++ "\n"
+                ++ (showLdif dl) ++ "\n"
+                ++ (either ("fan! " ++) showLdif (applyLdif dl l2)) ++ "\n"
 
 ldifApplyDiff12 :: Bool
 ldifApplyDiff12 =
-        either (const False) (== [testLdif1]) newLdif
+        either (const False) (== testLdif1) newLdif
         where
-            newLdif = applyLdif dl [testLdif2]
-            dl = diffLDIF [testLdif2] [testLdif1]
+            newLdif = applyLdif dl testLdif2
+            dl = diffLDIF testLdif2 testLdif1
 
 ldifApplyDiff21 :: Bool
 ldifApplyDiff21 =
-        either (const False) (== [testLdif2]) newLdif
+        either (const False) (== testLdif2) newLdif
         where
-            newLdif = applyLdif dl [testLdif1]
-            dl = diffLDIF [testLdif1] [testLdif2]
-
-testIsUniqueDN :: LdifStr -> Bool
-testIsUniqueDN (LdifStr s) = isUniqDN l
-    where
-        l = parseLdif $ BS.pack s
-
-testToHashMap :: LdifStr -> Bool
-testToHashMap (LdifStr s) = l == HM.toList (toHashMap l)
-    where
-        l = parseLdif $ BS.pack s
+            newLdif = applyLdif dl testLdif1
+            dl = diffLDIF testLdif1 testLdif2
 
 testLiftLdif :: LdifStr -> Property
 testLiftLdif (LdifStr s) = not (null s) ==>
-    (not (not (null l2) && not (null n2)) || l2 /= n2)
+    (not (not (M.null l) && not (M.null l')) || l /= l')
     where
-        n = map (second (liftLdif (map f))) l
-        f (a, v) = (a, ["abcdefghijklmnopqrstuvxyz"])
-        l = parseLdif $ BS.pack s
-        (_, l2) = partition isDel (map snd l)
-        (_, n2) = partition isDel (map snd n)
-        isDel LDIFDelete = True
+        ldif = parseLdif $ BS.pack s
+        ldif' = mapLDIF f ldif
+        l = M.filter isDel ldif
+        l' = ldif `M.difference` l
+        f _ v = "abcdefghijklmnopqrstuvxyz"
+        isDel (LDIFDelete _) = True
         isDel _ = False

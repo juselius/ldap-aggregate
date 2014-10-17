@@ -3,20 +3,21 @@ module TestData where
 
 import LDIF
 import Control.Arrow (first)
-import qualified Data.ByteString.Char8 as BS
 import Test.QuickCheck
 import Control.Applicative
 import Data.List
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.HashMap.Lazy as M
 
-genLdif' :: String -> [AttrSpec] -> BS.ByteString
+genLdif' :: DN -> [AttrSpec] -> BS.ByteString
 genLdif' dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
     where
         attrs = foldl (\s (a, v) ->
             s ++ a ++ ": " ++ v ++ "\n") "" (expanded av)
         expanded = concatMap (uncurry zip . first repeat)
 
-genLdif :: String -> [AttrSpec] -> LDIF
-genLdif dn av = (dn, LDIFEntry $ LDAPEntry dn av)
+genLdif :: DN -> [AttrSpec] -> LDIF
+genLdif dn av = M.singleton dn $ makeLdifEntry dn av
 
 newtype LdifStr = LdifStr { ldifStr :: String } deriving (Show)
 newtype LdifEntryStr = LdifEntryStr { entryStr :: String } deriving (Show)
@@ -74,7 +75,7 @@ genAttr = do
 
 genChangeType :: Gen String
 genChangeType = do
-    ch <- elements ["add", "delete\n", "modify", ""]
+    ch <- elements ["add", "delete\n", "modify"]
     return $ if not (null ch) then "changetype: " ++ ch else ""
 
 plainChar = ['a'..'z'] ++ ['A'..'Z'] ++ "åäöÅÄÖæøÆØ"
@@ -106,12 +107,12 @@ ldifAttrs2 =
     , ("D", ["D1"])
     ]
 
-(testLdif1, testLdif2) = bimap1 (uncurry genLdif) (l1, l2)
+[testLdif1, testLdif2] = map (uncurry genLdif) [l1, l2]
     where
         l1 = ("dc=foo,dc=com", ldifAttrs1)
         l2 = ("dc=foo,dc=com", ldifAttrs2)
 
-(testLdif1', testLdif2') = bimap1 (uncurry genLdif) (l1, l2)
+[testLdif1', testLdif2'] = map (uncurry genLdif) [l1, l2]
     where
         l1 = ("dc=bar,dc=org", ldifAttrs1)
         l2 = ("dc=bar,dc=org", ldifAttrs2)

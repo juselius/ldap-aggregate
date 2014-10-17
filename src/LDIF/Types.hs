@@ -14,11 +14,6 @@ module LDIF.Types (
     , Value
     , AttrSpec
     , Attrs
-    , mapLdif
-    , liftLdif
-    , ldapToLdif
-    , makeEntryLdif
-    , makeChangeLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -73,28 +68,4 @@ instance Show LDIFRecord where
                     formatOp LdapModReplace a = "replace: " ++ a ++ "\n"
                     formatOp _ a = "unknown: " ++ a ++ "\n"
             formatDn dn = "dn: " ++ dn ++ "\n"
-
-mapLdif :: (Attribute -> Value -> Value) -> LDIFRecord -> LDIFRecord
-mapLdif f l = case l of
-    LDIFEntry  _ av -> l { rAttrs = M.mapWithKey applyf  av }
-    LDIFChange _ av -> l { rMods  = M.mapWithKey applyf' av }
-    LDIFDelete _    -> l
-    where
-        applyf  k v = S.map (f k) v
-        applyf' k v = S.map (second (f k)) v
-
-liftLdif :: (DN -> DN) -> LDIFRecord -> LDIFRecord
-liftLdif f l = l { rDn = f $ rDn l }
-
-ldapToLdif :: [LDAPEntry] -> LDIF
-ldapToLdif x = M.fromList $ map toll x
-    where
-        toll (LDAPEntry dn av) = (dn, LDIFEntry dn (M.fromList $ map toat av))
-        toat (a, v) = (a, S.fromList v)
-
-makeEntryLdif :: DN -> Attribute -> [Value]-> LDIFRecord
-makeEntryLdif dn a v = LDIFEntry dn (M.singleton a (S.fromList v))
-
-makeChangeLdif :: DN -> LDAPModOp -> Attribute -> [Value]-> LDIFRecord
-makeChangeLdif dn op a v = LDIFChange dn (M.singleton a (S.fromList (zip (repeat op) v)))
 

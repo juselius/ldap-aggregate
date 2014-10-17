@@ -21,7 +21,7 @@ diffLDIF l1 l2 = diffEntries l1' l2'
         isNotMod _ = False
 
 diffEntries :: LDIF -> LDIF -> LDIF
-diffEntries l1 l2 = M.unions [adds, deletes, changes]
+diffEntries l1 l2 = M.unions [adds, mkDelete deletes, changes]
     where
         adds = l2 `M.difference` l1
         deletes = l1 `M.difference` (l2 `M.difference` adds)
@@ -29,6 +29,7 @@ diffEntries l1 l2 = M.unions [adds, deletes, changes]
         l1' = (l1 `M.difference` adds) `M.difference` deletes
         l2' = (l2 `M.difference` adds) `M.difference` deletes
         fetch a b = fromJust $ M.lookup a b
+        mkDelete = M.map (\(LDIFEntry dn _) -> LDIFDelete dn)
 
 diffRecords :: LDIFRecord -> LDIFRecord -> LDIFRecord
 diffRecords (LDIFEntry dn r1) (LDIFEntry _ r2) =

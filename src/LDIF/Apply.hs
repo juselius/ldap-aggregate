@@ -15,8 +15,8 @@ import qualified Data.HashSet as S
 
 type ApplyError = ErrorT String Identity
 
-applyLdif :: [Ldif] -> LDIF -> Either String LDIF
-applyLdif mods ldif = runIdentity . runErrorT $ applyLdif' mods ldif
+applyLdif :: LDIF -> LDIF -> Either String LDIF
+applyLdif mods ldif = runIdentity . runErrorT $ applyLdif' (M.toList mods) ldif
 
 applyLdif' :: [Ldif] -> LDIF -> ApplyError LDIF
 applyLdif' mods ldif = do

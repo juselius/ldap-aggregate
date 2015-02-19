@@ -3,3 +3,5 @@
 dist/
 cabal.sandbox.config
 .hpc
+hscope.out
+codex.tags

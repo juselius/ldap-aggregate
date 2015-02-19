@@ -2,6 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module LDIF.Types (
       LDAPModOp(..)
     , LDAPEntry(..)
@@ -12,6 +13,7 @@ module LDIF.Types (
     , DN
     , Attribute
     , Value
+    , ValueSet
     , AttrSpec
     , Attrs
 ) where
@@ -27,34 +29,36 @@ type DN = String
 type Attribute = String
 type Value = String
 type AttrSpec = (Attribute, [Value])
-type Attrs a = M.HashMap Attribute (S.HashSet a)
+type Attrs a = M.HashMap Attribute (ValueSet a)
+type ValueSet a = S.HashSet a
 type Ldif = (DN, LDIFRecord)
 type LDIF = M.HashMap DN LDIFRecord
 
-data LDIFRecord =
-      LDIFEntry {
-          rDn    :: DN
-        , rAttrs :: Attrs String
-        }
-    | LDIFChange {
-          rDn   :: DN
-        , rMods :: Attrs (LDAPModOp, String)
-        }
-    | LDIFDelete {
-          rDn   :: DN
-        } deriving (Eq)
-
+-- This is an orphaned instance, but it's probably ok, hence the GHC
+-- suppression. See the answer by Lennart Augustsson:
+-- http://stackoverflow.com/questions/3079537/orphaned-instances-in-haskell
 instance Hashable LDAPModOp where
     hash = fromEnum
     hashWithSalt s a = s `hashWithSalt` fromEnum a
 
+data LDIFRecord
+    = LDIFEntry { rDn :: DN
+                , rAttrs :: Attrs String }
+    | LDIFChange { rDn :: DN
+                 , rMods :: Attrs (LDAPModOp, String) }
+    | LDIFDelete { rDn :: DN }
+    deriving (Eq)
+
 instance Show LDIFRecord where
     show = \case
-        LDIFEntry dn av -> formatDn dn ++ "changetype: add\n"
+        LDIFEntry dn av ->
+            formatDn dn ++ "changetype: add\n"
             ++ pprint formatEntry av
-        LDIFChange dn av -> formatDn dn ++ "changetype: modify\n"
+        LDIFChange dn av ->
+            formatDn dn ++ "changetype: modify\n"
             ++ pprint formatChange av
-        LDIFDelete dn -> formatDn dn ++ "changetype: delete"
+        LDIFDelete dn ->
+            formatDn dn ++ "changetype: delete"
         where
             pprint f av = concatMap f . map (second S.toList) $ M.toList av
             formatEntry (a, v) = showAttrs $ zip (repeat a) v

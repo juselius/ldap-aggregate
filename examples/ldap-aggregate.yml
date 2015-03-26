@@ -1,0 +1,70 @@
+target:
+    uri: ldaps://localhost:389
+    base: dc=target
+    binddn: cn=admin,dc=source
+    password: secret
+    search:
+        - ou=users,dc=target
+        - ou=groups,dc=target
+        - cn=user,ou=members,dc=target
+    ignore:
+        - dn: ou=import,ou=users,dc=target
+        - dn: ou=import,ou=groups,dc=target
+        - dn: cn=vip,ou=members,dc=target
+        - attr: entryUUID
+        - dn: cn=Robert Smith,ou=users,dc=target
+          attr: ou
+        - dn: cn=Robert Smith,ou=users,dc=target
+          attr: ou
+          value: foo
+
+source:
+    - uri: ldaps://localhost:389
+      binddn: cn=admin,dc=source
+      base: dc=source
+      password: secret
+      auditlog: ./examples/auditlog.ldif
+      search:
+          - basedn: ou=users,dc=source
+            filter: '*'
+          - basedn: groups,dc=source
+          - basedn: ou=user,ou=members,dc=source
+      ignore:
+          - dn: ou=users,dc=source
+          - dn: ou=groups,dc=source
+          - dn: cn=user,ou=members,dc=source
+          - attr: entryUUID
+          - dn: cn=Robert Smith,ou=users,dc=target
+            attr: ou
+          - dn: ou=users,dc=source
+            attr: mail
+            value: ^foo@.*
+      rewrite:
+          - dn:
+              from: ou=users,dc=source
+              to: ou=import,ou=users,dc=target
+          - dn:
+              from: ou=groups,dc=source,
+              to: ou=import,ou=groups,dc=target
+          - dn:
+              from: cn=user,ou=members,dc=source
+              to: cn=vip,ou=members,dc=target
+          - dn: ou=users,dc=source
+            attr:
+                from: (mail)
+                to: e\\1
+          - dn: cn=Robert Smith,ou=users,dc=source
+            attr: ou
+            value:
+                from: Human *Resources
+                to: Human Incompetence
+          - attr: ou
+            value:
+                from: Human
+                to: Humanoid
+          - value:
+              from: Human
+              to: Humanoid
+
+
+

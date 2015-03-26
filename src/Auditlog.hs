@@ -9,7 +9,7 @@ module Auditlog (
 import System.IO
 import Text.Regex.Posix
 import Data.Maybe
-import LDIF
+import SimpleLDIF
 import LDAPAggregate
 import qualified Data.ByteString.Char8 as BS
 

@@ -19,8 +19,8 @@ module LDIF.Parser (
 import Prelude
 import Data.List
 import Control.Monad
-import LDIF.Types
-import LDIF.Preproc
+import SimpleLDIF.Types
+import SimpleLDIF.Preproc
 import Data.Hashable
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.ByteString

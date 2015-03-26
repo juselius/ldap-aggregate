@@ -13,7 +13,7 @@ module LDAPAggregate.DirectoryTree (
 
 import System.IO
 import LDAP
-import LDIF
+import SimpleLDIF
 
 printDIT :: LDAP -> String -> IO ()
 printDIT ldap tree = do

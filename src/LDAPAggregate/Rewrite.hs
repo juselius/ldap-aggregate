@@ -11,7 +11,7 @@ module LDAPAggregate.Rewrite (
     , makeRewriteAttrs
 ) where
 
-import LDIF
+import SimpleLDIF
 import LDAPAggregate.Types
 import Data.Maybe
 import Data.List (foldl')

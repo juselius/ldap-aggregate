@@ -14,7 +14,7 @@ module LDIF.Utils (
     , makeLdifChange
 ) where
 
-import LDIF.Types
+import SimpleLDIF.Types
 import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S

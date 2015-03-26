@@ -5,7 +5,7 @@ module LDIF.Diff (
       diffLDIF
 ) where
 
-import LDIF.Types
+import SimpleLDIF.Types
 import Data.Maybe
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S

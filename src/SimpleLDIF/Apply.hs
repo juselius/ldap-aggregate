@@ -3,7 +3,7 @@
 --
 module LDIF.Apply (applyLdif) where
 
-import LDIF.Types
+import SimpleLDIF.Types
 import Data.Maybe
 import Control.Monad.Error
 import Control.Monad.Identity

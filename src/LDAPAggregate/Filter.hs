@@ -10,7 +10,7 @@ module LDAPAggregate.Filter (
     --, mkFilterAction
 ) where
 
-import LDIF
+import SimpleLDIF
 import LDAPAggregate.Types
 import Text.Regex.Posix
 import qualified Data.HashMap.Lazy as M

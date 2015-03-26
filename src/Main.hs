@@ -5,13 +5,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Main where
 
+import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import Control.Monad
 import LDAP
-import LDIF
+import SimpleLDIF
 import Config
--- import LDAPAggregate.DirectoryTree
-import Paths_ldap_aggregate
+import LDAPAggregate
 import Data.Version
 
 data CmdLine = CmdLine {

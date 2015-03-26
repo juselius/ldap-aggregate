@@ -1,24 +1,27 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
+{-# LANGUAGE DisambiguateRecordFields #-}
 
 module LDAPRelay.Types (
-      RegexStr
-    , FromTo
-    , Filter(..)
+      Regexp
+    , Subst
+    , Culler(..)
 ) where
 
-type RegexStr = String
-type FromTo = (RegexStr, RegexStr)
+type Regexp = String
+type Subst = (Regexp, Regexp)
 
-data Filter a =
-      FilterDn      { operand   :: a }
-    | FilterAttr    { operand   :: a }
-    | FilterVal     { matchAttr :: RegexStr, operand :: a }
-    | FilterAttrDn  { matchDn   :: RegexStr, operand :: a }
-    | FilterValDn   { matchDn   :: RegexStr
-                    , matchAttr :: RegexStr
-                    , operand   :: a
-                    }
-    | InvalidFilter deriving (Show)
-
+data Culler =
+      CullDn {
+          cullDn   :: String -> Bool
+        }
+    | CullAttr {
+          cullDn   :: String -> Bool
+        , cullAttr :: String -> Bool
+        }
+    | CullVal {
+          cullDn   :: String -> Bool
+        , cullAttr :: String -> Bool
+        , cullVal  :: String -> Bool
+        }

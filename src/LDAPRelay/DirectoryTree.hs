@@ -22,7 +22,7 @@ printDIT ldap tree = do
     putStrLn "--"
     where
         prettify s e@(LDAPEntry dn _) =
-            showLDIF (dn, LDIFEntry e) ++ "\n" ++ s
+            showLdif (dn, LDIFAdd dn e) ++ "\n" ++ s
 
 bindDIT :: String -> String -> String -> IO LDAP
 bindDIT uri binddn pw = do
@@ -49,7 +49,6 @@ runLdif ldap =
     mapM_ runMod
     where
         runMod (dn, entry) = case entry of
-            LDIFEntry e -> ldapAdd ldap dn (ldapEntryToAdd e)
-            LDIFAdd e -> ldapAdd ldap dn e
-            LDIFChange e -> ldapModify ldap dn e
-            LDIFDelete -> ldapDelete ldap dn
+            LDIFAdd _ e -> ldapAdd ldap dn e
+            LDIFChange _ e -> ldapModify ldap dn e
+            LDIFDelete _ -> ldapDelete ldap dn

@@ -1,80 +1,101 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
+{-# LANGUAGE LambdaCase #-}
 
 module LDAPRelay.Filter (
       filterLdif
-    , filterDn
-    , filterEntries
-    , makeDnFilter
-    , makeAttrFilter
+    --, filterDn
+    --, filterEntries
+    --, mkFilterAction
 ) where
 
 import LDIF
 import LDAPRelay.Types
 import Text.Regex.Posix
-import Control.Arrow (second)
-import Data.List (partition, foldl')
+import qualified Data.HashMap.Lazy as M
+import qualified Data.HashSet as S
 
-makeDnFilter :: String -> Filter RegexStr
-makeDnFilter = FilterDn
+--mkFilterAction :: [Regexp] -> Regexp -> Action
+--mkFilterAction [dn] r = Ignore [CullDn dn] (=~ r)
+--mkFilterAction [dn, a] r = Ignore [CullDn dn, CullAttr a] (=~ r)
+--mkFilterAction [dn, a, v] r = Ignore [CullDn dn, CullAttr a, CullVal v] (=~ r)
 
-makeAttrFilter :: [String] -> Filter RegexStr
-makeAttrFilter [a] = FilterAttr a
-makeAttrFilter [dn, a] = FilterAttrDn dn a
-makeAttrFilter [dn, a, v] = FilterValDn dn a v
-makeAttrFilter _ = InvalidFilter
+filterLdif:: [Culler] -> LDIF -> LDIF
+filterLdif css = M.foldl' (filterRecord css) M.empty
 
-filterLdif :: [Filter RegexStr] -> [LDIF] -> [LDIF]
-filterLdif fs ldif = filterEntries fs ldif'
+filterRecord :: [Culler] -> LDIF -> LDIFRecord -> LDIF
+filterRecord css ldif rec =
+    if any matchDn css'
+    then ldif
+    else if not $ M.null $ M.foldlWithKey' (filterFields css') M.empty rec
+        then M.insert dn rec ldif
+        else ldif
     where
-        ldif' = filterDn fs' ldif
-        fs' = fst $ partition isDnFilter fs
+        css' = filter (flip cullDn dn) css
+        dn = rDn rec
+        matchDn x@(CullDn _) = cullDn x dn
+        matchDn _ = False
 
-filterDn :: [Filter RegexStr] -> [LDIF] -> [LDIF]
-filterDn fs = filter (\(dn, _) -> all (dnFilter dn) fs)
-    where
-        dnFilter dn' (FilterDn f) = not $ dn' =~ f
-        dnFilter _ _ = True
+filterFields :: [Culler] -> LDIFRecord -> String -> ValueSet a -> LDIFRecord
+filterFields css rec k v = rec
 
-filterEntries :: [Filter RegexStr] -> [LDIF] -> [LDIF]
-filterEntries fs = map (filterLDIF fs')
-    where
-        fs' = snd $ partition isDnFilter fs
+--filterLdifRecord :: [Filter] -> LDIFRecord -> LDIFRecord
+--filterLdifRecord fs r  =
+    --case r of
+        --LDIFEntry  {} -> r { rAttrs = applyFilters filterValues (rAttrs r) }
+        --LDIFChange {} -> r { rMods  = applyFilters filterValues (rMods r) }
+        --LDIFDelete {} -> r
+    --where
+        --applyFilters g r = M.filter (S.null) $ M.mapWithKey (g vfs) (pertain r)
+        --pertain = M.filterWithKey (dropAttr afs)
+        --fs' = filter (isActiveFilter (rDn r)) fs
+        --afs = filter isAttrFilter fs'
+        --vfs = filter isValueFilter fs'
 
-filterLDIF :: [Filter RegexStr] -> LDIF -> LDIF
-filterLDIF fs l@(dn, _) = second (liftLdif (runAttrFilters dn fs)) l
+--dropAttr :: [Filter] -> Attribute -> a -> Bool
+--dropAttr fs attr _ = all $ map isMatch fs
+    --where
+        --isMatch = \case
+            --FilterAttr _ atf -> not $ attr =~ atf
+            --_ -> True
 
-runAttrFilters :: DN -> [Filter RegexStr] -> [AttrSpec] -> [AttrSpec]
-runAttrFilters dn fs av = filter (\x -> all (matchAttrFilter dn x) fs') av'
-    where
-        av' = filter (not . null . snd) $ map (filterValues dn fs'') av
-        (fs'', fs') = partition isValueFilter fs
-        isValueFilter (FilterVal {}) = True
-        isValueFilter (FilterValDn {}) = True
-        isValueFilter _ = False
+--filterValues :: [Filter] -> Attribute -> ValueSet a -> ValueSet a
+--filterValues f a v = S.filter applyFilters v
+    --where
+        --applyFilters x = all notMatching f'
+        --f' = filter pertain f
+        --pertain (FilterVal _ atf _) = a =~ atf
+        --pertain _ = False
+        --notMatching (FilterVal _ _ vf) val = not $ v =~ vf
+        --notMatching  _ = True
 
-matchAttrFilter :: DN -> AttrSpec -> Filter RegexStr -> Bool
-matchAttrFilter dn (a, _) f = case f of
-    FilterAttr atf -> not $ a =~ atf
-    FilterAttrDn dnf atf -> not $ dn =~ dnf && a =~ atf
-    _ -> True
+{-filterValues' :: [Filter] -> Attribute -> ValueSet (LDAPModOp, String) -> ValueSet (LDAPModOp, String)-}
+{-filterValues' f a v = S.filter runFilters v-}
+    {-where-}
+        {-f' = filter pertains f-}
+        {-pertains (FilterVal _ atf _) = a =~ atf-}
+        {-pertains _ = False-}
+        {-runFilters x = all (\(FilterVal _ _ vf) -> x =~ vf) f'-}
 
-filterValues :: DN -> [Filter RegexStr] -> AttrSpec -> AttrSpec
-filterValues dn f as = foldl' applyFilter as f
-    where
-        applyFilter av (FilterValDn dnf atf valf) =
-            if dn =~ dnf
-            then filterAV av
-            else av
-            where
-                filterAV e@(a, v) =
-                    if a =~ atf
-                    then (a, filter (not . (=~ valf)) v)
-                    else e
-        applyFilter acc _ = acc
+--isDnFilter :: Filter -> Bool
+--isDnFilter = \case
+    --FilterRecord _ -> True
+    --_ -> False
 
-isDnFilter :: Filter RegexStr -> Bool
-isDnFilter (FilterDn _) = True
-isDnFilter _ = False
+--isAttrFilter :: Filter -> Bool
+--isAttrFilter = \case
+    --FilterAttr   {} -> True
+    --_ -> False
+
+--isValueFilter :: Filter -> Bool
+--isValueFilter = \case
+    --FilterVal   {} -> True
+    --_ -> False
+
+--isActiveFilter :: DN -> Filter -> Bool
+--isActiveFilter dn = \case
+    --FilterAttr dnf _   -> dn =~ dnf
+    --FilterVal  dnf _ _ -> dn =~ dnf
+    --_ -> True
 

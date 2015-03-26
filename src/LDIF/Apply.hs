@@ -56,8 +56,8 @@ applyAttr :: LDIFRecord
           -> Attribute
           -> S.HashSet (LDAPModOp,Value)
           -> LDIFRecord
-applyAttr (LDIFEntry dn ldif) name m =
-    LDIFEntry dn $
+applyAttr (LDIFAdd dn ldif) name m =
+    LDIFAdd dn $
         M.filter S.null $
           M.insert name (S.foldl' applyOp av m) ldif
     where
@@ -72,7 +72,7 @@ applyAttr (LDIFEntry dn ldif) name m =
 applyAttr ldif _ _ = ldif
 
 isAdd :: Ldif -> Bool
-isAdd (_, LDIFEntry _ _) = True
+isAdd (_, LDIFAdd _ _) = True
 isAdd _ = False
 
 isMod :: Ldif -> Bool

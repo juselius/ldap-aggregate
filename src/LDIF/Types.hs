@@ -42,16 +42,20 @@ instance Hashable LDAPModOp where
     hashWithSalt s a = s `hashWithSalt` fromEnum a
 
 data LDIFRecord
-    = LDIFEntry { rDn :: DN
-                , rAttrs :: Attrs String }
-    | LDIFChange { rDn :: DN
-                 , rMods :: Attrs (LDAPModOp, String) }
+    = LDIFAdd
+        { rDn :: DN
+        , rAttrs :: Attrs String
+        }
+    | LDIFChange
+        { rDn :: DN
+        , rMods :: Attrs (LDAPModOp, String)
+        }
     | LDIFDelete { rDn :: DN }
     deriving (Eq)
 
 instance Show LDIFRecord where
     show = \case
-        LDIFEntry dn av ->
+        LDIFAdd dn av ->
             formatDn dn ++ "changetype: add\n"
             ++ pprint formatEntry av
         LDIFChange dn av ->

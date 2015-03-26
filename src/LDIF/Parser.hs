@@ -99,7 +99,7 @@ pRec = do
 pLdapEntry :: Parser LDIFRecord
 pLdapEntry = do
     attrVals <- sepEndBy1 pAttrValSpec pSEP
-    return $ LDIFEntry [] (avToAttrs attrVals)
+    return $ LDIFAdd [] (avToAttrs attrVals)
 
 pChangeAdd :: Parser LDIFRecord
 pChangeAdd = do

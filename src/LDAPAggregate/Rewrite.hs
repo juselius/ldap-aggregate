@@ -2,7 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 
-module LDAPRelay.Rewrite (
+module LDAPAggregate.Rewrite (
       rewriteDn
     , rewriteDn'
     , rewriteAttrs'
@@ -12,7 +12,7 @@ module LDAPRelay.Rewrite (
 ) where
 
 import LDIF
-import LDAPRelay.Types
+import LDAPAggregate.Types
 import Data.Maybe
 import Data.List (foldl')
 import Text.Regex.Posix

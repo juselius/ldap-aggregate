@@ -1,7 +1,7 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module LDAPRelay.DirectoryTree (
+module LDAPAggregate.DirectoryTree (
       bindDIT
     , printDIT
     , getDIT

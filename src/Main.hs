@@ -7,7 +7,7 @@ module Main where
 import System.IO
 import LDIF
 import LDAP
-import LDAPRelay
+import LDAPAggregate
 import Text.Regex.Posix
 import Data.Maybe
 import Control.Applicative ((<$>))

@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE LambdaCase #-}
 
-module LDAPRelay.Filter (
+module LDAPAggregate.Filter (
       filterLdif
     --, filterDn
     --, filterEntries
@@ -11,7 +11,7 @@ module LDAPRelay.Filter (
 ) where
 
 import LDIF
-import LDAPRelay.Types
+import LDAPAggregate.Types
 import Text.Regex.Posix
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S

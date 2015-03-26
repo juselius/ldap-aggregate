@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE DisambiguateRecordFields #-}
 
-module LDAPRelay.Types (
+module LDAPAggregate.Types (
       Regexp
     , Subst
     , Culler(..)

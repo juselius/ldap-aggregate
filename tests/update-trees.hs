@@ -4,7 +4,7 @@ module Main where
 
 import System.Environment
 import System.IO
-import LDAPRelay
+import LDAPAggregate
 import LDIF
 import qualified Data.ByteString.Char8 as BS
 

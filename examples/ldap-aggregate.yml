@@ -4,9 +4,9 @@ target:
     binddn: cn=admin,dc=source
     password: secret
     search:
-        - ou=users,dc=target
-        - ou=groups,dc=target
-        - cn=user,ou=members,dc=target
+        - basedn: ou=users,dc=target
+        - basedn: ou=groups,dc=target
+        - basedn: cn=user,ou=members,dc=target
     ignore:
         - dn: ou=import,ou=users,dc=target
         - dn: ou=import,ou=groups,dc=target

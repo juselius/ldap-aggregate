@@ -6,7 +6,7 @@ module LDAPAggregate.DirectoryTree (
     , printDIT
     , getDIT
     , askBindPw
-    , runLdif
+    , commitLdif
     , LDAPEntry(..)
     , LDAPMod(..)
     ) where
@@ -44,8 +44,8 @@ askBindPw = do
     putStrLn ""
     return pw
 
-runLdif :: LDAP -> [LDIF] -> IO ()
-runLdif ldap =
+commitLdif :: LDAP -> [LDIF] -> IO ()
+commitLdif ldap =
     mapM_ runMod
     where
         runMod (dn, entry) = case entry of

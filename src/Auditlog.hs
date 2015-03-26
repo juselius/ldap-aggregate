@@ -47,4 +47,4 @@ monitorAuditlog ldap inh = forever $ do
         Left err -> print err
         Right ldif -> do
             print ldif
-            runLdif ldap ldif
+            commitLdif ldap ldif

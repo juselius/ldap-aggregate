@@ -46,7 +46,8 @@ library
       , tasty-quickcheck >=0.8 && <0.9
       , unordered-containers >=0.2 && <0.3
       , bytestring >=0.10 && <0.11
-      , regex-posix >=0.95 && <0.96
+      , regex-compat >=0.95 && <0.96
+      , regex-tdfa-rc >=1.1 && <1.2
       , LDAP >=0.6 && <0.7
       , QuickCheck >=2.7 && <2.8
       , configurator >=0.3 && <0.4

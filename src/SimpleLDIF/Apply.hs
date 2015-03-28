@@ -1,7 +1,7 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module LDIF.Apply (applyLdif) where
+module SimpleLDIF.Apply (applyLdif) where
 
 import SimpleLDIF.Types
 import Data.Maybe

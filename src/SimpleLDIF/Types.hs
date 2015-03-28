@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module LDIF.Types (
+module SimpleLDIF.Types (
       LDAPModOp(..)
     , LDAPEntry(..)
     , LDAPMod(..)

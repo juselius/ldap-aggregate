@@ -4,7 +4,7 @@
 -}
 {-# LANGUAGE RankNTypes #-}
 
-module LDIF.Utils (
+module SimpleLDIF.Utils (
       mapLDIF
     , mapLdif
     , liftLdif

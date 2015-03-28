@@ -27,7 +27,7 @@
 
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
-module LDIF.Preproc (
+module SimpleLDIF.Preproc (
      preproc
    , transposePos
    , PosTable

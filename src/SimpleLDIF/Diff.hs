@@ -1,7 +1,7 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module LDIF.Diff (
+module SimpleLDIF.Diff (
       diffLDIF
 ) where
 

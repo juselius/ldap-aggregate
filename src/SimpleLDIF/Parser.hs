@@ -9,7 +9,7 @@
 -}
 {-# LANGUAGE OverloadedStrings, PackageImports #-}
 
-module LDIF.Parser (
+module SimpleLDIF.Parser (
       parseLdifStr
     , parseLdifStr'
     , parseLdif

@@ -7,8 +7,6 @@
 {-# LANGUAGE MultiWayIf #-}
 module Config (
       Config(..)
-    , DIT(..)
-    , SearchBase(..)
     , readConfig
 ) where
 
@@ -17,31 +15,13 @@ import Data.Monoid
 import Data.Yaml
 import Control.Applicative
 import Control.Monad
-import LDAPAggregate.Types
+import LDAPAggregate.LDAP
 import qualified Data.Text as T
 
 data Config = Config {
       targetDIT :: DIT
     , sourceDIT :: [DIT]
     } deriving (Show)
-
-data DIT = DIT {
-      ditUri :: T.Text
-    , ditBaseDn :: T.Text
-    , ditBindDn :: T.Text
-    , ditPasswd :: T.Text
-    , ditSearchBases :: [SearchBase]
-    , ditIgnoreFilters :: [IgnoreCriterion]
-    , ditRewriteFilters :: [RewriteCriterion]
-    } deriving (Show)
-
-data SearchBase = SearchBase {
-      searchBase :: T.Text
-    , searchFilter :: T.Text
-    } deriving (Show)
-
-newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
-newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)
 
 instance FromJSON Config where
     parseJSON (Object o) = Config

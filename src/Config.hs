@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE MultiWayIf #-}
 module Config where
 
 import Data.Maybe
@@ -16,9 +17,8 @@ import Text.Regex.TDFA
 import Control.Applicative
 import Control.Monad
 import qualified Data.Text as T
-import qualified SimpleLDIF as L
-import qualified Data.HashMap.Lazy as M
-import qualified Data.HashSet as S
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
 
 data Config = Config {
       targetDIT :: DIT
@@ -41,9 +41,7 @@ data SearchBase = SearchBase {
     } deriving (Show)
 
 type Pattern = T.Text
-type Attribute = T.Text
-type Replace = T.Text
-type FromTo = (Pattern, Replace)
+type FromTo = (Pattern, T.Text)
 type IgnoreCriterion = [Criterion Pattern]
 type RewriteCriterion = [Criterion FromTo]
 
@@ -55,8 +53,8 @@ data Criterion a =
 class (Monoid t, Eq t) => Alter t where
     alter :: (Transfigure a, Alter t) => [a] -> t -> t
 
-instance (Monoid v, Alter v) => Alter (M.HashMap T.Text v) where
-    alter f l = M.foldlWithKey' transfig mempty l
+instance (Monoid v, Alter v) => Alter (HM.HashMap T.Text v) where
+    alter f = HM.foldlWithKey' transfig mempty
         where
             c = head f
             transfig acc k v
@@ -65,20 +63,18 @@ instance (Monoid v, Alter v) => Alter (M.HashMap T.Text v) where
                 , k' <- transfigureP c k =
                     if k' == mempty
                         then acc
-                        else M.insert k' v acc
+                        else HM.insert k' v acc
                 | matchP c k
                 , True <- contP c
                 , k' <- transfigureP c k
                 , v' <- alter (tail f) v =
-                    case (v' == mempty, k' == mempty) of
-                        (True,  True)  -> acc
-                        (True,  False) -> acc
-                        (False, True)  -> M.insert k  v' acc
-                        (False, False) -> M.insert k' v' acc
-                | otherwise = M.insert k v acc
+                    if | v' == mempty -> acc
+                       | k' == mempty -> HM.insert k  v' acc
+                       | otherwise    -> HM.insert k' v' acc
+                | otherwise = HM.insert k v acc
 
-instance Alter (L.ValueSet T.Text) where
-    alter f l = S.foldl' transfig mempty l
+instance Alter (HS.HashSet T.Text) where
+    alter f = HS.foldl' transfig mempty
         where
             c = head f
             transfig acc v
@@ -87,8 +83,8 @@ instance Alter (L.ValueSet T.Text) where
                 , v' <- transfigureP c v =
                     if v' == mempty
                         then acc
-                        else S.insert v' acc
-                | otherwise = S.insert v acc
+                        else HS.insert v' acc
+                | otherwise = HS.insert v acc
 
 class Transfigure a where
     type MatchP :: *
@@ -139,10 +135,10 @@ instance FromJSON IgnoreCriterion where
         dn    <- o .:? "dn"
         attr  <- o .:? "attr"
         value <- o .:? "value"
-        return $ [
-              (toCriterion (attr `mplus` value) dn)
-            , (toCriterion value attr)
-            , (toCriterion Nothing value)
+        return [
+              toCriterion (attr `mplus` value) dn
+            , toCriterion value attr
+            , toCriterion Nothing value
             ]
         where
             toCriterion :: Maybe a -> Maybe Pattern -> Criterion Pattern
@@ -160,10 +156,10 @@ instance FromJSON RewriteCriterion where
         dn    <- o `getFromTo` "dn"
         attr  <- o `getFromTo` "attr"
         value <- o `getFromTo` "value"
-        return $ [
-              (toCriterion (attr `mplus` value) dn)
-            , (toCriterion value attr)
-            , (toCriterion Nothing value)
+        return [
+              toCriterion (attr `mplus` value) dn
+            , toCriterion value attr
+            , toCriterion Nothing value
             ]
         where
             getFromTo x s = fmap parseFromTo (x .:? s)
@@ -184,35 +180,35 @@ instance FromJSON RewriteCriterion where
 readConfig :: FilePath -> IO Config
 readConfig f = liftM fromJust $ decodeFile f
 
-l0 :: M.HashMap T.Text (M.HashMap T.Text (S.HashSet T.Text))
-l0 = M.fromList [
+l0 :: HM.HashMap T.Text (HM.HashMap T.Text (HS.HashSet T.Text))
+l0 = HM.fromList [
       ("l0a", l10)
     , ("l0b", l11)
     ]
 
-l10 :: M.HashMap T.Text (S.HashSet T.Text)
-l10 = M.fromList [
+l10 :: HM.HashMap T.Text (HS.HashSet T.Text)
+l10 = HM.fromList [
       ("l10a", s10a)
     , ("l10b", s10a)
     ]
 
-l11 :: M.HashMap T.Text (S.HashSet T.Text)
-l11 = M.fromList [
+l11 :: HM.HashMap T.Text (HS.HashSet T.Text)
+l11 = HM.fromList [
       ("l11a", s11a)
     , ("l11b", s11b)
     ]
 
-s10a :: S.HashSet T.Text
-s10a = S.fromList ["s10a-1", "s10a-2"]
+s10a :: HS.HashSet T.Text
+s10a = HS.fromList ["s10a-1", "s10a-2"]
 
-s10b :: S.HashSet T.Text
-s10b = S.fromList ["s10b-1", "s10b-2"]
+s10b :: HS.HashSet T.Text
+s10b = HS.fromList ["s10b-1", "s10b-2"]
 
-s11a :: S.HashSet T.Text
-s11a = S.fromList ["s11a-1", "s11a-2"]
+s11a :: HS.HashSet T.Text
+s11a = HS.fromList ["s11a-1", "s11a-2"]
 
-s11b :: S.HashSet T.Text
-s11b = S.fromList ["s11b-1", "s11b-2"]
+s11b :: HS.HashSet T.Text
+s11b = HS.fromList ["s11b-1", "s11b-2"]
 
 f0 :: [Criterion T.Text]
 f0 = [Break "l0a"]

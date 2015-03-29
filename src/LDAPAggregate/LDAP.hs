@@ -1,12 +1,12 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module LDAPAggregate.DirectoryTree (
+module LDAPAggregate.LDAP (
       bindDIT
     , printDIT
     , getDIT
     , askBindPw
-    , commitLdif
+    , ldapCommit
     , LDAPEntry(..)
     , LDAPMod(..)
     ) where
@@ -44,8 +44,8 @@ askBindPw = do
     putStrLn ""
     return pw
 
-commitLdif :: LDAP -> [LDIF] -> IO ()
-commitLdif ldap =
+ldapCommit :: LDAP -> [LDIF] -> IO ()
+ldapCommit ldap =
     mapM_ runMod
     where
         runMod (dn, entry) = case entry of

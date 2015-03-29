@@ -22,23 +22,18 @@ cabal-version:       >=1.10
 
 library
     exposed-modules:
-          LDIF
+          SimpleLDIF
         , LDAPAggregate
     other-modules: Paths_ldap_aggregate
     other-extensions:
           OverloadedStrings
         , LambdaCase
         , MultiWayIf
-        , TupleSections
         , PackageImports
         , PatternGuards
         , ViewPatterns
+        , TypeFamilies
         , RecordWildCards
-        , NamedFieldPuns
-        , DisambiguateRecordFields
-        , ScopedTypeVariables
-        , LiberalTypeSynonyms
-        , EmptyDataDecls
     build-depends:
         base >=4.7 && <4.8
       , tasty >=0.10 && <0.11

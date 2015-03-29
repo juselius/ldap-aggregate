@@ -8,7 +8,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
 
-module LDAPAggregate.Types (
+module LDAPAggregate.Alter (
       Criterion(..)
     , Alter
     , Transfigure
@@ -32,6 +32,12 @@ data Criterion a =
 
 class (Monoid t, Eq t) => Alter t where
     alter :: (Transfigure a, Alter t) => [a] -> t -> t
+
+class Transfigure a where
+    type MatchP :: *
+    matchP :: a -> MatchP -> Bool
+    transfigureP :: a -> MatchP -> MatchP
+    contP :: a -> Bool
 
 instance (Monoid v, Alter v) => Alter (HM.HashMap T.Text v) where
     alter f = HM.foldlWithKey' transfig mempty
@@ -66,11 +72,6 @@ instance Alter (HS.HashSet T.Text) where
                         else HS.insert v' acc
                 | otherwise = HS.insert v acc
 
-class Transfigure a where
-    type MatchP :: *
-    matchP :: a -> MatchP -> Bool
-    transfigureP :: a -> MatchP -> MatchP
-    contP :: a -> Bool
 
 instance Transfigure (Criterion T.Text) where
     type MatchP = T.Text

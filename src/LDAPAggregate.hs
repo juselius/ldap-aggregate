@@ -3,7 +3,5 @@
 --
 module LDAPAggregate (module M) where
 
-import LDAPAggregate.Types as M
-import LDAPAggregate.DirectoryTree as M
-import LDAPAggregate.Rewrite as M
-import LDAPAggregate.Filter as M
+import LDAPAggregate.Alter as M
+import LDAPAggregate.LDAP as M

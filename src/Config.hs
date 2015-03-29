@@ -15,7 +15,7 @@ import Data.Monoid
 import Data.Yaml
 import Control.Applicative
 import Control.Monad
-import LDAPAggregate.LDAP
+import Aggregate.LDAP
 import qualified Data.Text as T
 
 data Config = Config {

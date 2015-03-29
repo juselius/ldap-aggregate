@@ -23,7 +23,7 @@ cabal-version:       >=1.10
 library
     exposed-modules:
           SimpleLDIF
-        , LDAPAggregate
+        , Aggregate
     other-modules: Paths_ldap_aggregate
     other-extensions:
           OverloadedStrings

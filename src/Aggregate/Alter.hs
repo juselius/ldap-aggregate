@@ -8,7 +8,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
 
-module LDAPAggregate.Alter (
+module Aggregate.Alter (
       Criterion(..)
     , Alter
     , Transfigure

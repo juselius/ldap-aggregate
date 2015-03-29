@@ -11,7 +11,7 @@ import Control.Monad
 import LDAP
 import SimpleLDIF
 import Config
-import LDAPAggregate
+import Aggregate
 import Data.Version
 
 data CmdLine = CmdLine {

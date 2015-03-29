@@ -2,7 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
-module LDAPAggregate.LDAP (
+module Aggregate.LDAP (
       bindDIT
     , printSubTree
     , getSubTree
@@ -16,7 +16,7 @@ module LDAPAggregate.LDAP (
 
 import System.IO
 import LDAP
-import LDAPAggregate.Alter
+import Aggregate.Alter
 import SimpleLDIF
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM

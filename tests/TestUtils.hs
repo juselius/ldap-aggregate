@@ -17,7 +17,7 @@ import System.IO
 import Text.Regex.Posix
 import LDAP
 import LDIF
-import LDAPAggregate
+import Aggregate
 import qualified Data.ByteString.Char8 as BS
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add

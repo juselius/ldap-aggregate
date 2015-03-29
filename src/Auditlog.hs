@@ -10,7 +10,7 @@ import System.IO
 import Text.Regex.Posix
 import Data.Maybe
 import SimpleLDIF
-import LDAPAggregate
+import Aggregate
 import qualified Data.ByteString.Char8 as BS
 
 waitForLine :: Handle -> IO BS.ByteString

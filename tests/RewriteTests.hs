@@ -4,7 +4,7 @@ module RewriteTests (
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import LDAPAggregate
+import Aggregate
 import TestData
 import LDIF
 

@@ -11,28 +11,27 @@ module SimpleLDIF.Types (
     , LDIF
     , Ldif
     , DN
-    , Attribute
-    , Value
-    , ValueSet
-    , AttrSpec
-    , Attrs
+    , LdifAttr
+    , LdifValue
+    , LdifAttrs
+    , LdifValues
 ) where
 
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 import Data.Hashable
 import Control.Arrow (second)
-import qualified Data.HashMap.Lazy as M
-import qualified Data.HashSet as S
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
+import qualified Data.Text as T
 
-type DN = String
-type Attribute = String
-type Value = String
-type AttrSpec = (Attribute, [Value])
-type Attrs a = M.HashMap Attribute (ValueSet a)
-type ValueSet a = S.HashSet a
+type DN = T.Text
+type LdifAttr = T.Text
+type LdifValue = T.Text
 type Ldif = (DN, LDIFRecord)
-type LDIF = M.HashMap DN LDIFRecord
+type LDIF = HM.HashMap DN LDIFRecord
+type LdifAttrs a = HM.HashMap LdifAttr (LdifValues a)
+type LdifValues a = HS.HashSet a
 
 -- This is an orphaned instance, but it's probably ok, hence the GHC
 -- suppression. See the answer by Lennart Augustsson:
@@ -44,11 +43,11 @@ instance Hashable LDAPModOp where
 data LDIFRecord
     = LDIFAdd
         { rDn :: DN
-        , rAttrs :: Attrs String
+        , rAttrs :: LdifAttrs T.Text
         }
     | LDIFChange
         { rDn :: DN
-        , rMods :: Attrs (LDAPModOp, String)
+        , rMods :: LdifAttrs (LDAPModOp, T.Text)
         }
     | LDIFDelete { rDn :: DN }
     deriving (Eq)
@@ -64,16 +63,23 @@ instance Show LDIFRecord where
         LDIFDelete dn ->
             formatDn dn ++ "changetype: delete"
         where
-            pprint f av = concatMap f . map (second S.toList) $ M.toList av
+            pprint f av = concatMap f . map (second HS.toList) $ HM.toList av
             formatEntry (a, v) = showAttrs $ zip (repeat a) v
             formatChange (a, v) = showMod $ zip (repeat a) v
-            showAttrs = unlines . map (\(a, v) -> a ++ ": " ++ v)
+            showAttrs = unlines . map (\(a, v) ->
+                T.unpack a ++ ": " ++ T.unpack v
+                )
             showMod = unlines . map (\(a, (op, v)) ->
-                formatOp op a ++ a ++ ": " ++ v ++ "\n-")
+                formatOp op (T.unpack a)
+                    ++ T.unpack a
+                    ++ ": "
+                    ++ T.unpack v
+                    ++ "\n"
+                )
                 where
                     formatOp LdapModAdd a = "add: " ++ a ++ "\n"
                     formatOp LdapModDelete a = "delete: " ++ a ++ "\n"
                     formatOp LdapModReplace a = "replace: " ++ a ++ "\n"
                     formatOp _ a = "unknown: " ++ a ++ "\n"
-            formatDn dn = "dn: " ++ dn ++ "\n"
+            formatDn dn = "dn: " ++ T.unpack dn ++ "\n"
 

@@ -16,43 +16,41 @@ module SimpleLDIF.Utils (
 
 import SimpleLDIF.Types
 import Control.Arrow (second)
-import qualified Data.HashMap.Lazy as M
-import qualified Data.HashSet as S
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
+import qualified Data.Text as T
 
-mapLDIF :: (forall a. Attribute -> ValueSet a -> ValueSet a) -> LDIF -> LDIF
-mapLDIF f l = M.map (mapLdif f) l
+mapLDIF :: (forall a. LdifAttr -> LdifValues a -> LdifValues a) -> LDIF -> LDIF
+mapLDIF f = HM.map (mapLdif f)
 
-mapLdif :: (forall a. Attribute -> ValueSet a -> ValueSet a)
+mapLdif :: (forall a. LdifAttr -> LdifValues a -> LdifValues a)
         -> LDIFRecord
         -> LDIFRecord
 mapLdif f l =
     case l of
-        LDIFAdd  _ av -> l { rAttrs = M.mapWithKey f av }
-        LDIFChange _ av -> l { rMods  = M.mapWithKey f av }
+        LDIFAdd  _ av -> l { rAttrs = HM.mapWithKey f av }
+        LDIFChange _ av -> l { rMods  = HM.mapWithKey f av }
         LDIFDelete _    -> l
-        --where
-            --applyf  k v = S.map (f k) v
-            --applyf' k v = S.map (second (f k)) v
 
 liftLdif :: (DN -> DN) -> LDIFRecord -> LDIFRecord
 liftLdif f l = l { rDn = f $ rDn l }
 
-showLdif :: LDIF -> String
-showLdif l = unwords . map show $ M.elems l
+showLdif :: LDIF -> T.Text
+showLdif l = T.unwords . map (T.pack . show) $ HM.elems l
 
 ldapToLdif :: [LDAPEntry] -> LDIF
-ldapToLdif x = M.fromList $ map toll x
+ldapToLdif x = HM.fromList $ map toll x
     where
-        toll (LDAPEntry dn av) =
-            (dn, LDIFAdd dn (M.fromList $ map toat av))
+        toll (LDAPEntry dn av) = let dn' = T.pack dn in
+            (dn', LDIFAdd dn' (HM.fromList $ map toat av))
         toat (a, v) =
-            (a, S.fromList v)
+            (T.pack a, HS.fromList (map T.pack v))
 
-makeLdifEntry :: DN -> [AttrSpec]-> LDIFRecord
+makeLdifEntry :: DN -> [(LdifAttr, [LdifValue])]-> LDIFRecord
 makeLdifEntry dn av =
-    LDIFAdd dn (M.fromList $ map (second S.fromList) av)
+    LDIFAdd dn (HM.fromList $ map (second HS.fromList) av)
 
-makeLdifChange :: DN -> LDAPModOp -> Attribute -> [Value]-> LDIFRecord
+makeLdifChange :: DN -> LDAPModOp -> LdifAttr -> [LdifValue]-> LDIFRecord
 makeLdifChange dn op a v =
-    LDIFChange dn (M.singleton a (S.fromList (zip (repeat op) v)))
+    LDIFChange dn (HM.singleton a (HS.fromList (zip (repeat op) v)))
 

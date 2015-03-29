@@ -49,7 +49,9 @@ diffRecords (LDIFAdd dn r1) (LDIFAdd _ r2) =
         fetch a b = fromJust $ M.lookup a b
 diffRecords _ _  = undefined
 
-diffValues :: S.HashSet Value -> S.HashSet Value-> S.HashSet (LDAPModOp, Value)
+diffValues :: S.HashSet LdifValue
+           -> S.HashSet LdifValue
+           -> S.HashSet (LDAPModOp, LdifValue)
 diffValues v1 v2 =
     S.unions [
         S.map ((,) LdapModAdd) adds,
@@ -59,7 +61,9 @@ diffValues v1 v2 =
         adds = v2 `S.difference` v1
         deletes = v2 `S.difference` (v2 `S.difference` adds)
 
-setLdapOp :: LDAPModOp -> Attrs Value -> Attrs (LDAPModOp,Value)
+setLdapOp :: LDAPModOp
+          -> LdifAttrs LdifValue
+          -> LdifAttrs (LDAPModOp, LdifValue)
 setLdapOp op = M.map (S.map ((,) op))
 
 

@@ -7,8 +7,8 @@
 
     <jonas.juselius@uit.no> 2014
 -}
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
-
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 module SimpleLDIF.Parser (
       parseLdifStr
     , parseLdifStr'
@@ -23,25 +23,25 @@ import SimpleLDIF.Types
 import SimpleLDIF.Preproc
 import Data.Hashable
 import "parsec" Text.Parsec as PR
-import "parsec" Text.Parsec.ByteString
+import "parsec" Text.Parsec.Text
 import Control.Arrow (second)
-import qualified Data.ByteString.Char8 as BC
+import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S
 
-parseLdif :: BC.ByteString -> LDIF
+parseLdif :: T.Text -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
-parseLdif' :: BC.ByteString -> [Ldif]
+parseLdif' :: T.Text -> [Ldif]
 parseLdif' ldif = either (error . show) id (parseLdifStr' [] ldif)
 
 -- | Parse LDIF content
-parseLdifStr :: FilePath -> BC.ByteString -> Either ParseError LDIF
+parseLdifStr :: FilePath -> T.Text -> Either ParseError LDIF
 parseLdifStr name xs = case parseLdifStr' name xs of
     Left err -> Left err
     Right ldif -> Right $ M.fromList ldif
 
-parseLdifStr' :: FilePath -> BC.ByteString -> Either ParseError [Ldif]
+parseLdifStr' :: FilePath -> T.Text -> Either ParseError [Ldif]
 parseLdifStr' name xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
@@ -99,7 +99,7 @@ pRec = do
 pLdapEntry :: Parser LDIFRecord
 pLdapEntry = do
     attrVals <- sepEndBy1 pAttrValSpec pSEP
-    return $ LDIFAdd [] (avToAttrs attrVals)
+    return $ LDIFAdd T.empty (avToAttrs attrVals)
 
 pChangeAdd :: Parser LDIFRecord
 pChangeAdd = do
@@ -112,16 +112,16 @@ pChangeDel = do
     void $ string "delete"
     pSEP
     void $ sepEndBy pAttrValSpec pSEP
-    return $ LDIFDelete []
+    return $ LDIFDelete T.empty
 
 pChangeMod :: Parser LDIFRecord
 pChangeMod = do
     void $ string "modify"
     pSEP
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
-    return . LDIFChange [] $ M.unions mods
+    return . LDIFChange T.empty $ M.unions mods
 
-pModSpec :: Parser (Attrs (LDAPModOp, Value))
+pModSpec :: Parser (LdifAttrs (LDAPModOp, LdifValue))
 pModSpec = do
    modStr <- pModType
    pFILL
@@ -130,16 +130,18 @@ pModSpec = do
    attrs <- sepEndBy pAttrValSpec pSEP
    return $ mkMod modStr attrs
 
-mkMod :: String -> [AttrSpec] -> Attrs (LDAPModOp, Value)
+mkMod :: T.Text
+      -> [(LdifAttr, [LdifValue])]
+      -> LdifAttrs (LDAPModOp, LdifValue)
 mkMod modStr av
     | modStr == "add:" = toRec LdapModAdd
     | modStr == "delete:" = toRec LdapModDelete
     | modStr == "replace:" = toRec LdapModReplace
-    | otherwise = error $ "unexpected mod:" ++ modStr
+    | otherwise = error $ "unexpected mod:" ++ T.unpack modStr
     where
         toRec op = avToAttrs $ map (second (zip (repeat op))) av
 
-avToAttrs :: (Eq a, Hashable a) => [(Attribute, [a])] -> Attrs a
+avToAttrs :: (Eq a, Hashable a) => [(LdifAttr, [a])] -> LdifAttrs a
 avToAttrs av =
     foldl' (\acc (a, s) -> M.insertWith S.union a s acc) M.empty avSets
     where
@@ -150,36 +152,37 @@ pDN = do
     pFILL
     pSafeString'
 
-pModType :: Parser String
-pModType = try (string "add:")
+pModType :: Parser T.Text
+pModType = fmap T.pack $
+           try (string "add:")
        <|> try (string "delete:")
        <|> string "replace:"
 
-pAttributeType :: Parser Attribute
-pAttributeType = do
+pAttrType :: Parser LdifAttr
+pAttrType = do
     pFILL
     c <- noneOf "-\n"
     xs <- many (noneOf " :\n")
     _ <- char ':'
     let ys = c:xs
-    return ys
+    return $ T.pack ys
 
-pAttrValSpec :: Parser (Attribute, [Value])
+pAttrValSpec :: Parser (LdifAttr, [LdifValue])
 pAttrValSpec = do
-    name <- pAttributeType
+    name <- pAttrType
     pFILL
     val  <- pSafeString'
     name `seq` val `seq` return (name, [val])
 
-pSafeString :: Parser String
+pSafeString :: Parser T.Text
 pSafeString = do
     c <- noneOf "\n :<"
     r <- many (noneOf "\n")
     let xs = c:r
-    return xs
+    return $ T.pack xs
 
-pSafeString' :: Parser String
-pSafeString' = many (noneOf "\n")
+pSafeString' :: Parser T.Text
+pSafeString' = fmap T.pack $ many (noneOf "\n")
 
 pFILL :: Parser ()
 pFILL = skipMany (oneOf " \t")

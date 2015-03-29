@@ -34,7 +34,7 @@ module SimpleLDIF.Preproc (
 ) where
 import Text.Parsec
 import Text.Parsec.Error (setErrorPos)
-import qualified Data.ByteString.Char8 as BC
+import qualified Data.Text as T
 import Data.List (foldl', sortBy)
 
 -- | Opaque data necessary for relation between text after preprocessing and original
@@ -43,9 +43,9 @@ type PosTable = [ PosOp ]
 data PosOp = PosOpAddLine { psLine :: Int }
            | PosOpWrap    { psLine :: Int, psW :: Int, psWP :: Int } deriving Show
 
-data LdifLine = LdifLine     { llNum :: Int, llStr :: BC.ByteString }
-              | LdifLineCont { llNum :: Int, llStr :: BC.ByteString }
-              | LdifComment  { llNum :: Int, llStr :: BC.ByteString }
+data LdifLine = LdifLine     { llNum :: Int, llStr :: T.Text }
+              | LdifLineCont { llNum :: Int, llStr :: T.Text }
+              | LdifComment  { llNum :: Int, llStr :: T.Text }
 
 -- | Convert error position to original text before preprocessing
 transposePos :: PosTable -> ParseError -> ParseError
@@ -68,28 +68,28 @@ calcPos xs cord = foldl' updatePos cord xs
     updatePos x _ = x
 
 -- | Preprocessing of LDIF file, concat wrapped lines and remove comment lines
-preproc :: BC.ByteString -> (BC.ByteString, PosTable)
+preproc :: T.Text -> (T.Text, PosTable)
 preproc xs = (str, ptab)
   where
-    str = BC.unlines $ map llStr ys
+    str = T.unlines $ map llStr ys
     (ys, ptab) = lns xs
       where
         lns zs = stripComments $ unwrap $ (tokenizeLines $ specLines zs, [])
 
-specLines :: BC.ByteString -> [BC.ByteString]
-specLines xs = map cleanLine $ BC.lines xs
+specLines :: T.Text -> [T.Text]
+specLines xs = map cleanLine $ T.lines xs
   where
     isCR c = c == '\r'
-    cleanLine l | BC.null l        = l
-                | isCR (BC.last l) = cleanLine $ BC.init l
+    cleanLine l | T.null l        = l
+                | isCR (T.last l) = cleanLine $ T.init l
                 | otherwise        = l
 
-tokenizeLines :: [BC.ByteString] -> [LdifLine]
+tokenizeLines :: [T.Text] -> [LdifLine]
 tokenizeLines xs = map tokenizeLine $ zip xs [1..]
   where
-    tokenizeLine (x,i) | BC.null x        = LdifLine     i BC.empty
-                       | BC.head x == '#' = LdifComment  i x
-                       | BC.head x == ' ' = LdifLineCont i $ BC.tail x
+    tokenizeLine (x,i) | T.null x        = LdifLine     i T.empty
+                       | T.head x == '#' = LdifComment  i x
+                       | T.head x == ' ' = LdifLineCont i $ T.tail x
                        | otherwise        = LdifLine     i x
 
 -- | Remove Comment Lines
@@ -106,7 +106,7 @@ unwrap (xs,pt) = foldl' procLine ([],pt) xs
     procLine ([],p) o = (o:[],p)
     procLine (v,p) (LdifLineCont i s) = let (z,r) = splitAt 1 v
                                             o = head z
-                                            o' = o { llStr = (llStr o) `BC.append` s }
-                                            p' = (PosOpWrap i (BC.length $ llStr o) (BC.length s)):p
+                                            o' = o { llStr = (llStr o) `T.append` s }
+                                            p' = (PosOpWrap i (T.length $ llStr o) (T.length s)):p
                                         in (o':r,p')
     procLine (v,p) o                  = (o:v,p)

@@ -4,21 +4,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
-module Config where
+module Config (
+      Config(..)
+    , DIT(..)
+    , SearchBase(..)
+    , readConfig
+) where
 
 import Data.Maybe
 import Data.Monoid
 import Data.Yaml
-import Text.Regex
-import Text.Regex.TDFA
 import Control.Applicative
 import Control.Monad
+import LDAPAggregate.Types
 import qualified Data.Text as T
-import qualified Data.HashMap.Lazy as HM
-import qualified Data.HashSet as HS
 
 data Config = Config {
       targetDIT :: DIT
@@ -40,72 +40,8 @@ data SearchBase = SearchBase {
     , searchFilter :: T.Text
     } deriving (Show)
 
-type Pattern = T.Text
-type FromTo = (Pattern, T.Text)
-type IgnoreCriterion = [Criterion Pattern]
-type RewriteCriterion = [Criterion FromTo]
-
-data Criterion a =
-      Cont  { criterion :: a }
-    | Break { criterion :: a }
-    deriving (Show)
-
-class (Monoid t, Eq t) => Alter t where
-    alter :: (Transfigure a, Alter t) => [a] -> t -> t
-
-instance (Monoid v, Alter v) => Alter (HM.HashMap T.Text v) where
-    alter f = HM.foldlWithKey' transfig mempty
-        where
-            c = head f
-            transfig acc k v
-                | matchP c k
-                , False <- contP c
-                , k' <- transfigureP c k =
-                    if k' == mempty
-                        then acc
-                        else HM.insert k' v acc
-                | matchP c k
-                , True <- contP c
-                , k' <- transfigureP c k
-                , v' <- alter (tail f) v =
-                    if | v' == mempty -> acc
-                       | k' == mempty -> HM.insert k  v' acc
-                       | otherwise    -> HM.insert k' v' acc
-                | otherwise = HM.insert k v acc
-
-instance Alter (HS.HashSet T.Text) where
-    alter f = HS.foldl' transfig mempty
-        where
-            c = head f
-            transfig acc v
-                | matchP c v
-                , False <- contP c
-                , v' <- transfigureP c v =
-                    if v' == mempty
-                        then acc
-                        else HS.insert v' acc
-                | otherwise = HS.insert v acc
-
-class Transfigure a where
-    type MatchP :: *
-    matchP :: a -> MatchP -> Bool
-    transfigureP :: a -> MatchP -> MatchP
-    contP :: a -> Bool
-
-instance Transfigure (Criterion T.Text) where
-    type MatchP = T.Text
-    matchP (criterion -> p) s = T.unpack s =~ T.unpack p
-    transfigureP _ _ = mempty
-    contP (Cont _) = True
-    contP _ = False
-
-instance Transfigure (Criterion FromTo) where
-    type MatchP = T.Text
-    matchP (criterion -> (p, _)) s = T.unpack s =~ T.unpack p
-    transfigureP (criterion -> (f, t)) s = T.pack $ subRegex
-        (mkRegex (T.unpack f)) (T.unpack s) (T.unpack t)
-    contP (Cont _) = True
-    contP _ = False
+newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
+newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)
 
 instance FromJSON Config where
     parseJSON (Object o) = Config
@@ -135,7 +71,7 @@ instance FromJSON IgnoreCriterion where
         dn    <- o .:? "dn"
         attr  <- o .:? "attr"
         value <- o .:? "value"
-        return [
+        return $ IgnoreCriterion [
               toCriterion (attr `mplus` value) dn
             , toCriterion value attr
             , toCriterion Nothing value
@@ -156,7 +92,7 @@ instance FromJSON RewriteCriterion where
         dn    <- o `getFromTo` "dn"
         attr  <- o `getFromTo` "attr"
         value <- o `getFromTo` "value"
-        return [
+        return $ RewriteCriterion [
               toCriterion (attr `mplus` value) dn
             , toCriterion value attr
             , toCriterion Nothing value
@@ -180,50 +116,3 @@ instance FromJSON RewriteCriterion where
 readConfig :: FilePath -> IO Config
 readConfig f = liftM fromJust $ decodeFile f
 
-l0 :: HM.HashMap T.Text (HM.HashMap T.Text (HS.HashSet T.Text))
-l0 = HM.fromList [
-      ("l0a", l10)
-    , ("l0b", l11)
-    ]
-
-l10 :: HM.HashMap T.Text (HS.HashSet T.Text)
-l10 = HM.fromList [
-      ("l10a", s10a)
-    , ("l10b", s10a)
-    ]
-
-l11 :: HM.HashMap T.Text (HS.HashSet T.Text)
-l11 = HM.fromList [
-      ("l11a", s11a)
-    , ("l11b", s11b)
-    ]
-
-s10a :: HS.HashSet T.Text
-s10a = HS.fromList ["s10a-1", "s10a-2"]
-
-s10b :: HS.HashSet T.Text
-s10b = HS.fromList ["s10b-1", "s10b-2"]
-
-s11a :: HS.HashSet T.Text
-s11a = HS.fromList ["s11a-1", "s11a-2"]
-
-s11b :: HS.HashSet T.Text
-s11b = HS.fromList ["s11b-1", "s11b-2"]
-
-f0 :: [Criterion T.Text]
-f0 = [Break "l0a"]
-
-f1 :: [Criterion T.Text]
-f1 = [Cont "l0a", Break "l10a"]
-
-f2 :: [Criterion T.Text]
-f2 = [Cont "l0a", Cont "l10a", Break "s10a-1"]
-
-r0 :: [Criterion FromTo]
-r0 = [Break ("l0a", "L0A")]
-
-r1 :: [Criterion FromTo]
-r1 = [Cont ("l(0)a", "L-\\1-A"), Break ("l10a", "L10A")]
-
-r2 :: [Criterion FromTo]
-r2 = [Cont ("l0a", "L10A"), Cont ("l10a", "L10A"), Break ("s10a-1", "S10A-1")]

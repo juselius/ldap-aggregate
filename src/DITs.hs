@@ -19,7 +19,6 @@ module DITs (
 
 import System.IO
 import Data.Yaml
-import Data.Maybe
 import Data.Monoid
 import Control.Applicative
 import Control.Monad
@@ -45,7 +44,7 @@ data SearchBase = SearchBase {
     } deriving (Show)
 
 instance FromJSON DIT where
-    parseJSON (Object o) = DIT
+    parseJSON (Object o) = fmap addAttrRewriteDn $ DIT
         <$> o .: "uri"
         <*> o .: "binddn"
         <*> o .: "password"
@@ -54,6 +53,16 @@ instance FromJSON DIT where
         <*> o .:? "ignore" .!= mempty
         <*> o .:? "rewrite" .!= mempty
     parseJSON _ = mzero
+
+-- for every dn rewrite, add the corresponding rewrite to attr dn
+addAttrRewriteDn :: DIT -> DIT
+addAttrRewriteDn d@DIT{..} = d { rewriteFilters = foldl f mempty rewriteFilters }
+    where
+        f acc r@(RewriteCriterion c)
+            | ("^$", "") <- criterion (head c) = r:acc
+            | ft <- criterion (head c) =
+                (RewriteCriterion [Break ft, Break q, Break q]):r:acc
+                where q = ("", "")
 
 instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase

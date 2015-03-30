@@ -8,10 +8,9 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
 
-module Aggregate.Alter (
+module Aggregate.Edit (
       Criterion(..)
-    , Alter
-    , Transfigure
+    , Edit
     , Pattern
     , FromTo
 ) where
@@ -30,17 +29,17 @@ data Criterion a =
     | Break { criterion :: a }
     deriving (Show)
 
-class (Monoid t, Eq t) => Alter t where
-    alter :: (Transfigure a, Alter t) => [a] -> t -> t
+class (Monoid t, Eq t) => Edit t where
+    edit :: (Filter a, Edit t) => [a] -> t -> t
 
-class Transfigure a where
+class Filter a where
     type MatchP :: *
     matchP :: a -> MatchP -> Bool
     transfigureP :: a -> MatchP -> MatchP
     contP :: a -> Bool
 
-instance (Monoid v, Alter v) => Alter (HM.HashMap T.Text v) where
-    alter f = HM.foldlWithKey' transfig mempty
+instance (Monoid v, Edit v) => Edit (HM.HashMap T.Text v) where
+    edit f = HM.foldlWithKey' transfig mempty
         where
             c = head f
             transfig acc k v
@@ -53,14 +52,14 @@ instance (Monoid v, Alter v) => Alter (HM.HashMap T.Text v) where
                 | matchP c k
                 , True <- contP c
                 , k' <- transfigureP c k
-                , v' <- alter (tail f) v =
+                , v' <- edit (tail f) v =
                     if | v' == mempty -> acc
                        | k' == mempty -> HM.insert k  v' acc
                        | otherwise    -> HM.insert k' v' acc
                 | otherwise = HM.insert k v acc
 
-instance Alter (HS.HashSet T.Text) where
-    alter f = HS.foldl' transfig mempty
+instance Edit (HS.HashSet T.Text) where
+    edit f = HS.foldl' transfig mempty
         where
             c = head f
             transfig acc v
@@ -73,14 +72,14 @@ instance Alter (HS.HashSet T.Text) where
                 | otherwise = HS.insert v acc
 
 
-instance Transfigure (Criterion T.Text) where
+instance Filter (Criterion T.Text) where
     type MatchP = T.Text
     matchP (criterion -> p) s = T.unpack s =~ T.unpack p
     transfigureP _ _ = mempty
     contP (Cont _) = True
     contP _ = False
 
-instance Transfigure (Criterion FromTo) where
+instance Filter (Criterion FromTo) where
     type MatchP = T.Text
     matchP (criterion -> (p, _)) s = T.unpack s =~ T.unpack p
     transfigureP (criterion -> (f, t)) s = T.pack $ subRegex

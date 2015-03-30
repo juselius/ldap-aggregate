@@ -3,5 +3,5 @@
 --
 module Aggregate (module M) where
 
-import Aggregate.Alter as M
+import Aggregate.Edit as M
 import Aggregate.LDAP as M

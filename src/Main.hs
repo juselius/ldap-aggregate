@@ -3,6 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Paths_ldap_aggregate
@@ -13,6 +14,7 @@ import SimpleLDIF
 import Config
 import Aggregate
 import Data.Version
+import qualified Data.Text as T
 
 data CmdLine = CmdLine {
       inpfile :: FilePath
@@ -57,12 +59,9 @@ updateDIT :: LDAP -> LDIF -> LDIF -> IO ()
 updateDIT ldap s t = commitLdif ldap $ diffLDIF t s
 
 getLdif :: DIT -> IO [LDIF]
-getLdif dit = do
+getLdif dit@DIT{..} = do
     l <- bindLdap dit
-    getDIT l (ditBaseDn dit) >>= mapM ldapEntryToLDIF
-
-bindLdap :: DIT -> IO LDAP
-bindLdap dit = bindDIT (ditUri dit) (ditBindDn dit) (ditPasswd dit)
+    getSubTree l (T.unpack basedn) >>= mapM ldapEntryToLDIF
 
 genEntryFilters = undefined
 applyEntryFilters = undefined

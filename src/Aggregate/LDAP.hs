@@ -2,33 +2,38 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 module Aggregate.LDAP (
-      bindDIT
+      bindLdap
     , printSubTree
     , getSubTree
     , askBindPw
-    , ldapCommit
+    , commitLdap
     , LDAPEntry(..)
     , LDAPMod(..)
     , DIT(..)
     , SearchBase(..)
+    , IgnoreCriterion(..)
+    , RewriteCriterion(..)
     ) where
 
 import System.IO
 import LDAP
-import Aggregate.Alter
+import Aggregate.Edit
 import SimpleLDIF
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 
 data DIT = DIT {
-      ditUri :: T.Text
-    , ditBaseDn :: T.Text
-    , ditBindDn :: T.Text
-    , ditPasswd :: T.Text
-    , ditSearchBases :: [SearchBase]
-    , ditIgnoreFilters :: [IgnoreCriterion]
-    , ditRewriteFilters :: [RewriteCriterion]
+      uri :: T.Text
+    , binddn :: T.Text
+    , passwd :: T.Text
+    , basedn :: T.Text
+    , searchBases :: [SearchBase]
+    , ignoreFilters :: [IgnoreCriterion]
+    , rewriteFilters :: [RewriteCriterion]
     } deriving (Show)
 
 data SearchBase = SearchBase {
@@ -39,27 +44,15 @@ data SearchBase = SearchBase {
 newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
 newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)
 
-printSubTree :: LDAP -> String -> IO ()
-printSubTree ldap tree = do
-    ldif <- getSubTree ldap tree
-    putStrLn . init . T.unpack $ foldl prettify  "" ldif
-    putStrLn "--"
-    where
-        prettify s (LDAPEntry dn e) =
-            showLdif l `T.append` "\n" `T.append`  s
-            where
-                e' = entryToText e
-                dn' = T.pack dn
-                l = HM.fromList [(dn', LDIFAdd dn' e')]
-
-entryToText :: [(String, [String])] -> [(T.Text, [T.Text])]
-entryToText e = map (\(dn, x) -> (T.pack dn, map T.pack x)) e
-
-bindDIT :: DIT-> IO LDAP
-bindDIT (DIT uri _ binddn pw _ _ _) = do
-    ldap <- ldapInitialize uri
-    ldapSimpleBind ldap binddn pw
+bindLdap :: DIT-> IO LDAP
+bindLdap DIT{..} = do
+    ldap <- ldapInitialize uri'
+    ldapSimpleBind ldap binddn' passwd'
     return ldap
+    where
+        uri' = T.unpack uri
+        binddn' = T.unpack binddn
+        passwd' = T.unpack passwd
 
 getSubTree :: LDAP -> String -> IO [LDAPEntry]
 getSubTree ldap tree =
@@ -75,12 +68,17 @@ askBindPw = do
     putStrLn ""
     return pw
 
-ldapCommit :: LDAP -> LDIF -> IO ()
-ldapCommit ldap =
-    mapM_ runMod
+commitLdap :: LDAP -> LDIF -> IO ()
+commitLdap ldap ldif =
+    mapM_ runMod $ HM.toList ldif
     where
-        runMod (dn, entry) = case entry of
-            LDIFAdd _ e -> ldapAdd ldap dn e
-            LDIFChange _ e -> ldapModify ldap dn e
-            LDIFDelete _ -> ldapDelete ldap dn
+        runMod ((T.unpack -> dn), entry) = case entry of
+            LDIFAdd    _ (recordToLdapAdd -> e) -> ldapAdd ldap dn e
+            LDIFChange _ (recordToLdapMod -> e) -> ldapModify ldap dn e
+            LDIFDelete _                        -> ldapDelete ldap dn
+
+printSubTree :: LDAP -> String -> IO ()
+printSubTree ldap tree = do
+    ldif <- getSubTree ldap tree
+    putStrLn . T.unpack . showLdif $ ldapToLdif ldif
 

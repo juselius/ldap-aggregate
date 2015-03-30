@@ -35,23 +35,23 @@ class (Monoid t, Eq t) => Edit t where
 class Filter a where
     type MatchP :: *
     matchP :: a -> MatchP -> Bool
-    transfigureP :: a -> MatchP -> MatchP
+    editP :: a -> MatchP -> MatchP
     contP :: a -> Bool
 
 instance (Monoid v, Edit v) => Edit (HM.HashMap T.Text v) where
-    edit f = HM.foldlWithKey' transfig mempty
+    edit f = HM.foldlWithKey' revise mempty
         where
             c = head f
-            transfig acc k v
+            revise acc k v
                 | matchP c k
                 , False <- contP c
-                , k' <- transfigureP c k =
+                , k' <- editP c k =
                     if k' == mempty
                         then acc
                         else HM.insert k' v acc
                 | matchP c k
                 , True <- contP c
-                , k' <- transfigureP c k
+                , k' <- editP c k
                 , v' <- edit (tail f) v =
                     if | v' == mempty -> acc
                        | k' == mempty -> HM.insert k  v' acc
@@ -59,13 +59,13 @@ instance (Monoid v, Edit v) => Edit (HM.HashMap T.Text v) where
                 | otherwise = HM.insert k v acc
 
 instance Edit (HS.HashSet T.Text) where
-    edit f = HS.foldl' transfig mempty
+    edit f = HS.foldl' revise mempty
         where
             c = head f
-            transfig acc v
+            revise acc v
                 | matchP c v
                 , False <- contP c
-                , v' <- transfigureP c v =
+                , v' <- editP c v =
                     if v' == mempty
                         then acc
                         else HS.insert v' acc
@@ -75,14 +75,14 @@ instance Edit (HS.HashSet T.Text) where
 instance Filter (Criterion T.Text) where
     type MatchP = T.Text
     matchP (criterion -> p) s = T.unpack s =~ T.unpack p
-    transfigureP _ _ = mempty
+    editP _ _ = mempty
     contP (Cont _) = True
     contP _ = False
 
 instance Filter (Criterion FromTo) where
     type MatchP = T.Text
     matchP (criterion -> (p, _)) s = T.unpack s =~ T.unpack p
-    transfigureP (criterion -> (f, t)) s = T.pack $ subRegex
+    editP (criterion -> (f, t)) s = T.pack $ subRegex
         (mkRegex (T.unpack f)) (T.unpack s) (T.unpack t)
     contP (Cont _) = True
     contP _ = False

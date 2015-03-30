@@ -4,4 +4,3 @@
 module Aggregate (module M) where
 
 import Aggregate.Edit as M
-import Aggregate.LDAP as M

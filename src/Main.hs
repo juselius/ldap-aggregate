@@ -12,6 +12,7 @@ import Control.Monad
 import LDAP
 import SimpleLDIF
 import Config
+import DITs
 import Aggregate
 import Data.Version
 import qualified Data.Text as T

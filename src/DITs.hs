@@ -61,7 +61,7 @@ addAttrRewriteDn d@DIT{..} = d { rewriteFilters = foldl f mempty rewriteFilters 
         f acc r@(RewriteCriterion c)
             | ("^$", "") <- criterion (head c) = r:acc
             | ft <- criterion (head c) =
-                (RewriteCriterion [Break ft, Break q, Break q]):r:acc
+                RewriteCriterion [Break ft, Break q, Break q]:r:acc
                 where q = ("", "")
 
 instance FromJSON SearchBase where
@@ -70,7 +70,7 @@ instance FromJSON SearchBase where
         <*> o .:? "filter" .!= mempty
     parseJSON _ = mzero
 
-bindLdap :: DIT-> IO LDAP
+bindLdap :: DIT -> IO LDAP
 bindLdap DIT{..} = do
     ldap <- ldapInitialize uri'
     ldapSimpleBind ldap binddn' passwd'
@@ -98,7 +98,7 @@ commitLdap :: LDAP -> LDIF -> IO ()
 commitLdap ldap ldif =
     mapM_ runMod $ HM.toList ldif
     where
-        runMod ((T.unpack -> dn), entry) = case entry of
+        runMod (T.unpack -> dn, entry) = case entry of
             LDIFAdd    _ (recordToLdapAdd -> e) -> ldapAdd ldap dn e
             LDIFChange _ (recordToLdapMod -> e) -> ldapModify ldap dn e
             LDIFDelete _                        -> ldapDelete ldap dn

@@ -1,23 +1,23 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module TestData where
 
-import LDIF
+import SimpleLDIF
 import Control.Arrow (first)
 import Test.QuickCheck
 import Control.Applicative
 import Data.List
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.HashMap.Lazy as M
+import qualified Data.Text as T
+import qualified Data.HashMap.Lazy as HM
 
-genLdif' :: DN -> [AttrSpec] -> BS.ByteString
-genLdif' dn av = BS.pack $ "dn: " ++ dn ++ "\n" ++ attrs
+genLdif' :: DN -> [AttrSpec] -> T.Text
+genLdif' dn av = T.pack $ "dn: " ++ dn ++ "\n" ++ attrs
     where
         attrs = foldl (\s (a, v) ->
             s ++ a ++ ": " ++ v ++ "\n") "" (expanded av)
         expanded = concatMap (uncurry zip . first repeat)
 
 genLdif :: DN -> [AttrSpec] -> LDIF
-genLdif dn av = M.singleton dn $ makeLdifEntry dn av
+genLdif dn av = HM.singleton dn $ makeLdifEntry dn av
 
 newtype LdifStr = LdifStr { ldifStr :: String } deriving (Show)
 newtype LdifEntryStr = LdifEntryStr { entryStr :: String } deriving (Show)

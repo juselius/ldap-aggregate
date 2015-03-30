@@ -1,12 +1,12 @@
 -- | Update source tree
-
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import System.Environment
 import System.IO
-import Aggregate
-import LDIF
-import qualified Data.ByteString.Char8 as BS
+import SimpleLDIF
+import DITs
+import qualified Data.Text.IO as T
 
 main :: IO ()
 main = do
@@ -14,11 +14,19 @@ main = do
     doS
     where
         doS = do
-            ldap <- bindDIT "ldap://localhost" "cn=admin,dc=source" "secret"
+            ldap <- bindLdap dit
             ldif <- readLdif "./ldif/source.update.ldif"
             let l = parseLdif ldif
             print l
-            runLdif ldap l
-            printDIT ldap "dc=source"
-        readLdif f = withFile f ReadMode BS.hGetContents
+            commitLdap ldap l
+            printSubTree ldap "dc=source"
+        readLdif f = withFile f ReadMode T.hGetContents
+        dit = DIT
+            "ldap://localhost"
+            "cn=admin,dc=source"
+            "secret"
+            ""
+            []
+            []
+            []
 

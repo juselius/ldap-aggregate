@@ -1,6 +1,6 @@
 import Test.Tasty
 import LdifTests
-import LDIF
+import SimpleLDIF
 import TestData
 --import RewriteTests
 

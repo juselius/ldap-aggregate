@@ -14,34 +14,35 @@ module TestUtils (
 ) where
 
 import System.IO
-import Text.Regex.Posix
+import Text.Regex.TDFA
 import LDAP
-import LDIF
+import DITs
+import SimpleLDIF
 import Aggregate
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
-ldifStrToLdapAdd :: BS.ByteString -> [(String, [LDAPMod])]
+ldifStrToLdapAdd :: T.Text -> [(String, [LDAPMod])]
 ldifStrToLdapAdd str =
         map toMod ldif
     where
         ldif = extractEntries $ parseLdifStr "" str
         extractEntries = either (error . show) id
-        toMod (dn, LDIFEntry x) = (dn, ldapEntryToAdd x)
         toMod (dn, LDIFAdd x) = (dn, x)
         toMod (dn, _) = (dn, [])
 
 
 clearTree' :: String -> IO ()
 clearTree' tree = do
-    ldap <- bindDIT "ldap://localhost:389" ("cn=admin," ++ tree) "secret"
-    printDIT ldap tree
+    ldap <- bindLdap "ldap://localhost:389" ("cn=admin," ++ tree) "secret"
+    printSubTree ldap tree
     clearTree ldap tree
-    printDIT ldap tree
+    printSubTree ldap tree
 
 clearTree :: LDAP -> String -> IO ()
 clearTree ldap tree = do
-    ldif <- getDIT ldap tree
+    ldif <- getSubTree ldap tree
     let ldif' = reverse $ filter delEntry ldif
     mapM_ (ldapDelete ldap . ledn) ldif'
     where
@@ -52,16 +53,16 @@ clearTree ldap tree = do
 
 populateSource :: LDAP -> IO ()
 populateSource ldap = do
-    ltree <- withFile "./ldif/source.tree.ldif" ReadMode BS.hGetContents
-    lpops <- withFile "./ldif/source.populate.ldif" ReadMode BS.hGetContents
+    ltree <- withFile "./ldif/source.tree.ldif" ReadMode T.hGetContents
+    lpops <- withFile "./ldif/source.populate.ldif" ReadMode T.hGetContents
     let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
     commit ltree
     commit lpops
 
 populateTarget :: LDAP -> IO ()
 populateTarget ldap = do
-    ltree <- withFile "./ldif/target.tree.ldif" ReadMode BS.hGetContents
-    lpops <- withFile "./ldif/target.populate.ldif" ReadMode BS.hGetContents
+    ltree <- withFile "./ldif/target.tree.ldif" ReadMode T.hGetContents
+    lpops <- withFile "./ldif/target.populate.ldif" ReadMode T.hGetContents
     let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
     commit ltree
     commit lpops

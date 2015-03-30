@@ -4,12 +4,12 @@ module LdifTests where
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck as QC
-import LDIF
+import SimpleLDIF
 import TestData
 import Data.List
 import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as M
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text as T
 
 import Debug.Trace
 
@@ -31,23 +31,23 @@ ldifUnitTests = testGroup "LDIF unit tests" [
 ldifParserIdempotent:: LdifStr -> Bool
 ldifParserIdempotent (LdifStr s) = srt s == srt l
     where
-        l = showLdif $ parseLdif $ BS.pack s
+        l = showLdif $ parseLdif $ T.pack s
         srt = unlines . sort . lines
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =
         "changetype" `isInfixOf` (showLdif $ dl)
         where
-            l1 = parseLdif $ BS.pack s1
-            l2 = parseLdif $ BS.pack s2
+            l1 = parseLdif $ T.pack s1
+            l2 = parseLdif $ T.pack s2
             dl = diffLDIF l1 l2
 
 ldifApplyDiffIdempotent :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifApplyDiffIdempotent (LdifEntryStr s1, LdifEntryStr s2) =
         either (const False) (== l1) $ applyLdif dl l2
         where
-            l1 = parseLdif $ BS.pack s1
-            l2 = parseLdif $ BS.pack s2
+            l1 = parseLdif $ T.pack s1
+            l2 = parseLdif $ T.pack s2
             dl = diffLDIF l2 l1
             dbg = "\ndbg: " ++ "\n"
                 ++ (showLdif l1) ++ "\n"
@@ -73,7 +73,7 @@ testLiftLdif :: LdifStr -> Property
 testLiftLdif (LdifStr s) = not (null s) ==>
     (not (not (M.null l) && not (M.null l')) || l /= l')
     where
-        ldif = parseLdif $ BS.pack s
+        ldif = parseLdif $ T.pack s
         ldif' = mapLDIF f ldif
         l = M.filter isDel ldif
         l' = ldif `M.difference` l

@@ -35,7 +35,7 @@ type Match = (String, String, String, [String])
 readAuditlogBlock :: Handle -> [T.Text] -> IO (Integer, T.Text)
 readAuditlogBlock inh acc = do
     line <- waitForLine inh
-    if (T.unpack line) =~ matchEmptyLine
+    if T.unpack line =~ matchEmptyLine
         then readAuditlogBlock inh acc
         else let (_, _, _, hits) = T.unpack line =~ matchEndRecord :: Match in
             if not $ null hits

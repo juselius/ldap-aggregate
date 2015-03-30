@@ -25,8 +25,7 @@
 -- OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
-
+{-# LANGUAGE OverloadedStrings #-}
 module SimpleLDIF.Preproc (
      preproc
    , transposePos
@@ -40,8 +39,13 @@ import Data.List (foldl', sortBy)
 -- | Opaque data necessary for relation between text after preprocessing and original
 type PosTable = [ PosOp ]
 
-data PosOp = PosOpAddLine { psLine :: Int }
-           | PosOpWrap    { psLine :: Int, psW :: Int, psWP :: Int } deriving Show
+data PosOp =
+      PosOpAddLine { psLine :: Int }
+    | PosOpWrap    {
+          psLine :: Int
+        , psW :: Int
+        , psWP :: Int
+    } deriving Show
 
 data LdifLine = LdifLine     { llNum :: Int, llStr :: T.Text }
               | LdifLineCont { llNum :: Int, llStr :: T.Text }
@@ -54,17 +58,21 @@ transposePos ptab oe = setErrorPos npos oe
     opos = errorPos oe
     npos = setSourceColumn (setSourceLine opos nlin) ncol
       where
-        opIdx a b = (psLine a) `compare` (psLine b)
-        ocord = (sourceLine opos,sourceColumn opos)
-        (nlin,ncol) = calcPos (sortBy opIdx ptab) ocord
+        opIdx a b = psLine a `compare` psLine b
+        ocord = (sourceLine opos, sourceColumn opos)
+        (nlin, ncol) = calcPos (sortBy opIdx ptab) ocord
 
 calcPos :: PosTable -> (Int, Int) -> (Int, Int)
 calcPos xs cord = foldl' updatePos cord xs
   where
-    updatePos (l0,c0) (PosOpAddLine l)    | l0 >= l        = (l0+1,c0)
-    updatePos (l0,c0) (PosOpWrap l _ _)  | l0 >= l        = (l0+1,c0)
-    updatePos (l0,c0) (PosOpWrap l w wp)  | (l0+1) == l && c0 > w && (c0-1-w) > wp  = (l0+1,c0)
-    updatePos (l0,c0) (PosOpWrap l w wp)  | (l0+1) == l && c0 > w && (c0-1-w) <= wp = (l0+1,c0-w)
+    updatePos (l0, c0) (PosOpAddLine l)
+        | l0 >= l        = (l0+1, c0)
+    updatePos (l0, c0) (PosOpWrap l _ _)
+        | l0 >= l        = (l0+1, c0)
+    updatePos (l0, c0) (PosOpWrap l w wp)
+        | (l0+1) == l && c0 > w && (c0-1-w) > wp  = (l0+1, c0)
+    updatePos (l0, c0) (PosOpWrap l w wp)
+        | (l0+1) == l && c0 > w && (c0-1-w) <= wp = (l0+1, c0-w)
     updatePos x _ = x
 
 -- | Preprocessing of LDIF file, concat wrapped lines and remove comment lines
@@ -74,7 +82,7 @@ preproc xs = (str, ptab)
     str = T.unlines $ map llStr ys
     (ys, ptab) = lns xs
       where
-        lns zs = stripComments $ unwrap $ (tokenizeLines $ specLines zs, [])
+        lns zs = stripComments $ unwrap (tokenizeLines $ specLines zs, [])
 
 specLines :: T.Text -> [T.Text]
 specLines xs = map cleanLine $ T.lines xs
@@ -85,28 +93,29 @@ specLines xs = map cleanLine $ T.lines xs
                 | otherwise        = l
 
 tokenizeLines :: [T.Text] -> [LdifLine]
-tokenizeLines xs = map tokenizeLine $ zip xs [1..]
+tokenizeLines xs = zipWith (curry tokenizeLine) xs [1..]
   where
-    tokenizeLine (x,i) | T.null x        = LdifLine     i T.empty
+    tokenizeLine (x, i) | T.null x        = LdifLine     i T.empty
                        | T.head x == '#' = LdifComment  i x
                        | T.head x == ' ' = LdifLineCont i $ T.tail x
                        | otherwise        = LdifLine     i x
 
 -- | Remove Comment Lines
-stripComments :: ([LdifLine],PosTable) -> ([LdifLine],PosTable)
-stripComments (xs,pt) = foldl' procLine ([],pt) xs
+stripComments :: ([LdifLine], PosTable) -> ([LdifLine], PosTable)
+stripComments (xs, pt) = foldl' procLine ([], pt) xs
   where
-    procLine (v,p) (LdifComment i _) = (v,(PosOpAddLine i):p)
-    procLine (v,p) o                 = (o:v,p)
+    procLine (v, p) (LdifComment i _) = (v, PosOpAddLine i:p)
+    procLine (v, p) o                 = (o:v, p)
 
 -- | Unwrap lines, lines with space at begin is continue of previous line
-unwrap :: ([LdifLine],PosTable) -> ([LdifLine],PosTable)
-unwrap (xs,pt) = foldl' procLine ([],pt) xs
+unwrap :: ([LdifLine], PosTable) -> ([LdifLine], PosTable)
+unwrap (xs, pt) = foldl' procLine ([], pt) xs
   where
-    procLine ([],p) o = (o:[],p)
-    procLine (v,p) (LdifLineCont i s) = let (z,r) = splitAt 1 v
-                                            o = head z
-                                            o' = o { llStr = (llStr o) `T.append` s }
-                                            p' = (PosOpWrap i (T.length $ llStr o) (T.length s)):p
-                                        in (o':r,p')
-    procLine (v,p) o                  = (o:v,p)
+    procLine ([], p) o = ([o], p)
+    procLine (v, p) (LdifLineCont i s) =
+        let (z, r) = splitAt 1 v
+            o = head z
+            o' = o { llStr = llStr o `T.append` s }
+            p' = PosOpWrap i (T.length $ llStr o) (T.length s):p
+            in (o':r, p')
+    procLine (v, p) o = (o:v, p)

@@ -25,6 +25,7 @@ import Data.Hashable
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.Text
 import Control.Arrow (second)
+import Control.Applicative ((<$>))
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as M
 import qualified Data.HashSet as S
@@ -182,7 +183,7 @@ pSafeString = do
     return $ T.pack xs
 
 pSafeString' :: Parser T.Text
-pSafeString' = fmap T.pack $ many (noneOf "\n")
+pSafeString' = T.pack <$> many (noneOf "\n")
 
 pFILL :: Parser ()
 pFILL = skipMany (oneOf " \t")

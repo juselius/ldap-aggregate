@@ -18,7 +18,6 @@ module SimpleLDIF.Utils (
 
 import SimpleLDIF.Types
 import Control.Arrow (second)
-import Data.List (concat)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
@@ -56,7 +55,7 @@ recordToLdapAdd la = map f $ HM.toList la
         vl v = map T.unpack (HS.toList v)
 
 recordToLdapMod :: LdifAttrs (LDAPModOp, T.Text) -> [LDAPMod]
-recordToLdapMod lm = concat . map f $ HM.toList lm
+recordToLdapMod lm = concatMap f $ HM.toList lm
     where
         f (a, v) = map (\(m, x) -> LDAPMod m (T.unpack a) x) $ vl v
         vl v = map (\(m, x) -> (m, [T.unpack x])) (HS.toList v)

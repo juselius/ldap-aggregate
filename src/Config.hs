@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Config (
       Config(..)
     , readConfig
@@ -15,7 +16,7 @@ import Data.Monoid
 import Data.Yaml
 import Control.Applicative
 import Control.Monad
-import Aggregate.LDAP
+import Aggregate
 import qualified Data.Text as T
 
 data Config = Config {
@@ -32,9 +33,9 @@ instance FromJSON Config where
 instance FromJSON DIT where
     parseJSON (Object o) = DIT
         <$> o .: "uri"
-        <*> o .: "base"
         <*> o .: "binddn"
         <*> o .: "password"
+        <*> o .: "base"
         <*> o .: "search"
         <*> o .:? "ignore" .!= mempty
         <*> o .:? "rewrite" .!= mempty

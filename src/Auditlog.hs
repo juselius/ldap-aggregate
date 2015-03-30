@@ -7,36 +7,39 @@ module Auditlog (
 ) where
 
 import System.IO
-import Text.Regex.Posix
+import Text.Regex.TDFA
 import Data.Maybe
+import Control.Monad
 import SimpleLDIF
 import Aggregate
-import qualified Data.ByteString.Char8 as BS
+import LDAP
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
-waitForLine :: Handle -> IO BS.ByteString
+waitForLine :: Handle -> IO T.Text
 waitForLine inh = do
     avail <- hWaitForInput inh 50000
-    if avail then waitForLine inh else BS.hGetLine inh
+    if avail then waitForLine inh else T.hGetLine inh
 
-matchEmptyLine :: BS.ByteString
+matchEmptyLine :: String
 matchEmptyLine = "^ *$"
 
-matchBeginRecord :: BS.ByteString
+matchBeginRecord :: String
 matchBeginRecord = "^# (add|modify|delete) ([0-9]+)"
 
-matchEndRecord :: BS.ByteString
+matchEndRecord :: String
 matchEndRecord = "^# end (add|modify|delete) ([0-9]+)"
 
-type Match = (BS.ByteString, BS.ByteString, BS.ByteString, [BS.ByteString])
+type Match = (String, String, String, [String])
 
-readAuditlogBlock :: Handle -> [BS.ByteString] -> IO (Integer, BS.ByteString)
+readAuditlogBlock :: Handle -> [T.Text] -> IO (Integer, T.Text)
 readAuditlogBlock inh acc = do
     line <- waitForLine inh
-    if line =~ matchEmptyLine
+    if (T.unpack line) =~ matchEmptyLine
         then readAuditlogBlock inh acc
-        else let (_, _, _, hits) = line =~ matchEndRecord :: Match in
+        else let (_, _, _, hits) = T.unpack line =~ matchEndRecord :: Match in
             if not $ null hits
-                then return (read (BS.unpack $ hits !! 1), BS.unlines acc)
+                then return (read (hits !! 1), T.unlines acc)
                 else readAuditlogBlock inh (acc ++ [line])
 
 monitorAuditlog :: LDAP -> Handle ->  IO ()
@@ -47,4 +50,4 @@ monitorAuditlog ldap inh = forever $ do
         Left err -> print err
         Right ldif -> do
             print ldif
-            commitLdif ldap ldif
+            commitLdap ldap ldif

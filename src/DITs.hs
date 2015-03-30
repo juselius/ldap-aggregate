@@ -15,8 +15,6 @@ module DITs (
     , LDAPMod(..)
     , DIT(..)
     , SearchBase(..)
-    , IgnoreCriterion(..)
-    , RewriteCriterion(..)
     ) where
 
 import System.IO
@@ -27,7 +25,7 @@ import Control.Applicative
 import Control.Monad
 import LDAP
 import SimpleLDIF
-import Aggregate.Edit
+import Aggregate
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 
@@ -46,9 +44,6 @@ data SearchBase = SearchBase {
     , searchFilter :: T.Text
     } deriving (Show)
 
-newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
-newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)
-
 instance FromJSON DIT where
     parseJSON (Object o) = DIT
         <$> o .: "uri"
@@ -64,53 +59,6 @@ instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase
         <$> o .: "basedn"
         <*> o .:? "filter" .!= mempty
-    parseJSON _ = mzero
-
-instance FromJSON IgnoreCriterion where
-    parseJSON (Object o) = do
-        dn    <- o .:? "dn"
-        attr  <- o .:? "attr"
-        value <- o .:? "value"
-        return $ IgnoreCriterion [
-              toCriterion (attr `mplus` value) dn
-            , toCriterion value attr
-            , toCriterion Nothing value
-            ]
-        where
-            toCriterion :: Maybe a -> Maybe Pattern -> Criterion Pattern
-            toCriterion p v
-                | isJust p = Cont v'
-                | otherwise = Break v'
-                where v' = fromMaybe mempty v
-    parseJSON _ = mzero
-
-noMatch :: (T.Text, T.Text)
-noMatch = ("^$", "")
-
-instance FromJSON RewriteCriterion where
-    parseJSON (Object o) = do
-        dn    <- o `getFromTo` "dn"
-        attr  <- o `getFromTo` "attr"
-        value <- o `getFromTo` "value"
-        return $ RewriteCriterion [
-              toCriterion (attr `mplus` value) dn
-            , toCriterion value attr
-            , toCriterion Nothing value
-            ]
-        where
-            getFromTo x s = fmap parseFromTo (x .:? s)
-            toCriterion :: Maybe a -> Maybe FromTo -> Criterion FromTo
-            toCriterion p v
-                | isJust p = Cont v'
-                | otherwise = Break v'
-                where v' = fromMaybe noMatch v
-            parseFromTo :: Maybe Value -> Maybe FromTo
-            parseFromTo (Just (Object x)) =
-                flip parseMaybe x $ \y -> (,)
-                    <$> y .: "from"
-                    <*> y .: "to"
-            parseFromTo _ = Nothing
-
     parseJSON _ = mzero
 
 bindLdap :: DIT-> IO LDAP

@@ -4,3 +4,4 @@
 module Aggregate (module M) where
 
 import Aggregate.Edit as M
+import Aggregate.Criterion as M

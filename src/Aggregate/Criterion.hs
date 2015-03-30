@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module DITs (
+module Aggregate.Criterion (
       IgnoreCriterion(..)
     , RewriteCriterion(..)
     ) where
@@ -14,7 +14,6 @@ import Data.Monoid
 import Control.Applicative
 import Control.Monad
 import Aggregate.Edit
-import qualified Data.Text as T
 
 newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
 newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)
@@ -60,8 +59,7 @@ instance FromJSON RewriteCriterion where
                     <$> y .: "from"
                     <*> y .: "to"
             parseFromTo _ = Nothing
+            noMatch = ("^$", "")
     parseJSON _ = mzero
 
-noMatch :: (T.Text, T.Text)
-noMatch = ("^$", "")
 

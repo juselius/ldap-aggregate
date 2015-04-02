@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module LdifTests where
 
@@ -8,7 +9,8 @@ import SimpleLDIF
 import TestData
 import Data.List
 import Control.Arrow (second)
-import qualified Data.HashMap.Lazy as M
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
 import Debug.Trace
@@ -20,7 +22,6 @@ ldifPropertyTests = testGroup "LDIF properties" [
       QC.testProperty "parser is idempotent" ldifParserIdempotent
     , QC.testProperty "diff is diff ldif" ldifDiffIsDiff
     , QC.testProperty "apply diff is idempotent" ldifApplyDiffIdempotent
-    , QC.testProperty "lifting" testLiftLdif
     ]
 
 ldifUnitTests = testGroup "LDIF unit tests" [
@@ -31,29 +32,30 @@ ldifUnitTests = testGroup "LDIF unit tests" [
 ldifParserIdempotent:: LdifStr -> Bool
 ldifParserIdempotent (LdifStr s) = srt s == srt l
     where
-        l = showLdif $ parseLdif $ T.pack s
-        srt = unlines . sort . lines
+        l = showLdif $ parseLdif $ s
+        srt = T.unlines . sort . T.lines
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =
-        "changetype" `isInfixOf` (showLdif $ dl)
+        "changetype" `T.isInfixOf` (showLdif $ dl)
         where
-            l1 = parseLdif $ T.pack s1
-            l2 = parseLdif $ T.pack s2
+            l1 = parseLdif s1
+            l2 = parseLdif s2
             dl = diffLDIF l1 l2
 
 ldifApplyDiffIdempotent :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifApplyDiffIdempotent (LdifEntryStr s1, LdifEntryStr s2) =
         either (const False) (== l1) $ applyLdif dl l2
         where
-            l1 = parseLdif $ T.pack s1
-            l2 = parseLdif $ T.pack s2
+            l1 = parseLdif s1
+            l2 = parseLdif s2
             dl = diffLDIF l2 l1
-            dbg = "\ndbg: " ++ "\n"
-                ++ (showLdif l1) ++ "\n"
-                ++ (showLdif l2) ++ "\n"
-                ++ (showLdif dl) ++ "\n"
-                ++ (either ("fan! " ++) showLdif (applyLdif dl l2)) ++ "\n"
+            dbg = "\ndbg: " `T.append` "\n"
+                `T.append` (showLdif l1) `T.append` "\n"
+                `T.append` (showLdif l2) `T.append` "\n"
+                `T.append` (showLdif dl) `T.append` "\n"
+                `T.append` (either (\x -> "oops! " `T.append` T.pack x)
+                    showLdif (applyLdif dl l2)) `T.append` "\n"
 
 ldifApplyDiff12 :: Bool
 ldifApplyDiff12 =
@@ -69,14 +71,3 @@ ldifApplyDiff21 =
             newLdif = applyLdif dl testLdif1
             dl = diffLDIF testLdif1 testLdif2
 
-testLiftLdif :: LdifStr -> Property
-testLiftLdif (LdifStr s) = not (null s) ==>
-    (not (not (M.null l) && not (M.null l')) || l /= l')
-    where
-        ldif = parseLdif $ T.pack s
-        ldif' = mapLDIF f ldif
-        l = M.filter isDel ldif
-        l' = ldif `M.difference` l
-        f _ v = "abcdefghijklmnopqrstuvxyz"
-        isDel (LDIFDelete _) = True
-        isDel _ = False

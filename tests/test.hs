@@ -1,7 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
 import Test.Tasty
 import LdifTests
 import SimpleLDIF
 import TestData
+import qualified Data.Text as T
 --import RewriteTests
 
 main :: IO ()
@@ -11,7 +13,7 @@ main = do
             , ("B", ["B1"])
             , ("C", ["C1"])
             ]
-    putStr $ showLdif ldiff
+    putStr . T.unpack $ showLdif ldiff
     defaultMain tests
 
 tests :: TestTree

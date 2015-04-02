@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module TestData where
 
@@ -5,22 +6,27 @@ import SimpleLDIF
 import Control.Arrow (first)
 import Test.QuickCheck
 import Control.Applicative
-import Data.List
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 
-genLdif' :: DN -> [AttrSpec] -> T.Text
-genLdif' dn av = T.pack $ "dn: " ++ dn ++ "\n" ++ attrs
+type AttrList = [(T.Text, [T.Text])]
+
+genLdif' :: DN -> AttrList -> T.Text
+genLdif' dn av = "dn: " `T.append` dn `T.append` "\n" `T.append` attrs
     where
         attrs = foldl (\s (a, v) ->
-            s ++ a ++ ": " ++ v ++ "\n") "" (expanded av)
+            s    ` T.append `
+            a    ` T.append `
+            ": " ` T.append `
+            v    ` T.append `
+            "\n") "" (expanded av)
         expanded = concatMap (uncurry zip . first repeat)
 
-genLdif :: DN -> [AttrSpec] -> LDIF
+genLdif :: DN -> AttrList -> LDIF
 genLdif dn av = HM.singleton dn $ makeLdifEntry dn av
 
-newtype LdifStr = LdifStr { ldifStr :: String } deriving (Show)
-newtype LdifEntryStr = LdifEntryStr { entryStr :: String } deriving (Show)
+newtype LdifStr = LdifStr { ldifStr :: T.Text } deriving (Show)
+newtype LdifEntryStr = LdifEntryStr { entryStr :: T.Text } deriving (Show)
 
 instance Arbitrary LdifStr where
     arbitrary = do
@@ -29,7 +35,7 @@ instance Arbitrary LdifStr where
         attrs <- genAttrs dn ch
         return $ LdifStr $ stringify [dn, ch, attrs]
         where
-            stringify = init . unlines . filter (not . null)
+            stringify = T.init . T.unlines . filter (not . T.null)
 
 instance Arbitrary LdifEntryStr where
     arbitrary = do
@@ -37,47 +43,58 @@ instance Arbitrary LdifEntryStr where
         attrs <- genAttrs dn ""
         return $ LdifEntryStr $ stringify [dn, attrs]
         where
-            stringify = init . unlines . filter (not . null)
+            stringify = T.init . T.unlines . filter (not . T.null)
 
-genDN :: Gen String
+genDN :: Gen T.Text
 genDN = do
-    cn <- (++) <$> pure "cn=" <*> genSafeString1
-    ou <- listOf $ (++) <$> pure "ou=" <*> genSafeString1
-    dc <- listOf $ (++) <$> pure "dc=" <*> genSafeString1
-    return $ "dn: " ++ intercalate "," (filter (not . null) [
-        cn, intercalate "," ou, intercalate "," dc
+    cn <- T.append <$> pure "cn=" <*> genSafeString1
+    ou <- listOf $ T.append <$> pure "ou=" <*> genSafeString1
+    dc <- listOf $ T.append <$> pure "dc=" <*> genSafeString1
+    return $ "dn: " `T.append` T.intercalate "," (filter (not . T.null) [
+        cn, T.intercalate "," ou, T.intercalate "," dc
         ])
 
-genAttrs :: String -> String -> Gen String
+genAttrs :: T.Text -> T.Text -> Gen T.Text
 genAttrs dn ch
-    | "delete" `isInfixOf` ch = return ""
-    | "modify" `isInfixOf` ch = do
+    | "delete" `T.isInfixOf` ch = return ""
+    | "modify" `T.isInfixOf` ch = do
         a <- listOf1 genModAttr
-        return $ unlines a
+        return $ T.unlines a
     | otherwise = do
         a <- listOf genAttr
-        return $ cn ++ unlines a
+        return $ cn `T.append` T.unlines a
     where
-        cn = "cn: " ++ (drop 7 . takeWhile (/= ',') $ dn) ++ "\n"
+        cn = "cn: "
+            `T.append` (T.drop 7 . T.takeWhile (/= ',') $ dn)
+            `T.append` "\n"
 
-genModAttr :: Gen String
+genModAttr :: Gen T.Text
 genModAttr = do
     op <- elements ["add: ", "delete: ", "replace: "]
     a <- genSafeString1
     v <- genSafeString1
-    return $ op ++ a ++ "\n" ++ a ++ ": " ++ v ++ "\n-"
+    return $ op
+        `T.append` a
+        `T.append` "\n"
+        `T.append` a
+        `T.append` ": "
+        `T.append` v
+        `T.append` "\n-"
 
-genAttr :: Gen String
+genAttr :: Gen T.Text
 genAttr = do
     a <- genSafeString1
     v <- genSafeString1
-    return $ a ++ ": " ++ v
+    return $ a `T.append` ": " `T.append` v
 
-genChangeType :: Gen String
+genChangeType :: Gen T.Text
 genChangeType = do
     ch <- elements ["add", "delete\n", "modify"]
-    return $ if not (null ch) then "changetype: " ++ ch else ""
+    return $ if not (T.null ch)
+        then "changetype: " `T.append` ch
+        else ""
 
+plainChar :: String
 plainChar = ['a'..'z'] ++ ['A'..'Z'] ++ "åäöÅÄÖæøÆØ"
 
 genSafeChar :: Gen Char
@@ -86,21 +103,21 @@ genSafeChar = elements plainChar
 genSafeAlpha :: Gen Char
 genSafeAlpha = elements $ plainChar ++ "0123456789"
 
-genSafeString :: Gen String
-genSafeString = (:) <$> genSafeChar <*> listOf genSafeAlpha
+genSafeString :: Gen T.Text
+genSafeString = liftA T.pack $ (:) <$> genSafeChar <*> listOf genSafeAlpha
 
-genSafeString1 :: Gen String
-genSafeString1 = (:) <$> genSafeChar <*> listOf1 genSafeAlpha
+genSafeString1 :: Gen T.Text
+genSafeString1 = liftA T.pack $ (:) <$> genSafeChar <*> listOf1 genSafeAlpha
 
 
-ldifAttrs1 :: [AttrSpec]
+ldifAttrs1 :: AttrList
 ldifAttrs1 =
     [ ("A", ["A1", "A2"])
     , ("B", ["B1"])
     , ("C", ["C1"])
     ]
 
-ldifAttrs2 :: [AttrSpec]
+ldifAttrs2 :: AttrList
 ldifAttrs2 =
     [ ("A", ["A1"])
     , ("B", ["B2"])

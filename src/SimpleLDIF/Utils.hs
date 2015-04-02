@@ -5,10 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 module SimpleLDIF.Utils (
-      mapLDIF
-    , mapLdif
-    , liftLdif
-    , showLdif
+      showLdif
     , ldapToLdif
     , recordToLdapAdd
     , recordToLdapMod
@@ -21,21 +18,6 @@ import Control.Arrow (second)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
-
-mapLDIF :: (forall a. LdifAttr -> LdifValues a -> LdifValues a) -> LDIF -> LDIF
-mapLDIF f = HM.map (mapLdif f)
-
-mapLdif :: (forall a. LdifAttr -> LdifValues a -> LdifValues a)
-        -> LDIFRecord
-        -> LDIFRecord
-mapLdif f l =
-    case l of
-        LDIFAdd  _ av -> l { rAttrs = HM.mapWithKey f av }
-        LDIFChange _ av -> l { rMods  = HM.mapWithKey f av }
-        LDIFDelete _    -> l
-
-liftLdif :: (DN -> DN) -> LDIFRecord -> LDIFRecord
-liftLdif f l = l { rDn = f $ rDn l }
 
 showLdif :: LDIF -> T.Text
 showLdif l = T.unwords . map (T.append "\n---\n" . T.pack . show) $ HM.elems l

@@ -3,8 +3,8 @@ import Test.Tasty
 import LdifTests
 import SimpleLDIF
 import TestData
+-- import RewriteTests
 import qualified Data.Text as T
---import RewriteTests
 
 main :: IO ()
 main = do

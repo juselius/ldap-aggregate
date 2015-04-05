@@ -13,6 +13,7 @@ module Aggregate.Edit (
     , Edit
     , Pattern
     , FromTo
+    , edit
 ) where
 import Data.Monoid
 import Text.Regex

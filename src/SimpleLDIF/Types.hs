@@ -74,7 +74,7 @@ instance Show LDIFRecord where
                     ++ T.unpack a
                     ++ ": "
                     ++ T.unpack v
-                    ++ "\n"
+                    ++ "\n-"
                 )
                 where
                     formatOp LdapModAdd a = "add: " ++ a ++ "\n"

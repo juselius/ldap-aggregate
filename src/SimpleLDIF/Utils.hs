@@ -20,7 +20,7 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
 showLdif :: LDIF -> T.Text
-showLdif l = T.unwords . map (T.append "\n---\n" . T.pack . show) $ HM.elems l
+showLdif l = T.unwords . map (T.pack . show) $ HM.elems l
 
 ldapToLdif :: [LDAPEntry] -> LDIF
 ldapToLdif x = HM.fromList $ map toll x

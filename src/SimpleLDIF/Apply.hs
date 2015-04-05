@@ -12,22 +12,22 @@ import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
+-- import Debug.Trace
+
 type ApplyError = ErrorT String Identity
 
 applyLdif :: LDIF -> LDIF -> Either String LDIF
 applyLdif mods ldif =
     runIdentity . runErrorT $
-      applyLdif' (HM.toList mods) ldif
+        applyLdif' (HM.toList mods) ldif
 
 applyLdif' :: [Ldif] -> LDIF -> ApplyError LDIF
-applyLdif' mods ldif = do
-    l1 <- runAdd ldif
-    l2 <- runMod l1
-    runDel l2
+applyLdif' mods ldif =
+    runAdd ldif >>= runDel >>= runMod
     where
         runAdd = runOp addLdif isAdd
-        runDel = runOp delLdif isDel
         runMod = runOp modLdif isMod
+        runDel = runOp delLdif isDel
         runOp op p l = foldM op l $ filter p mods
 
 addLdif :: LDIF -> Ldif -> ApplyError LDIF
@@ -43,28 +43,29 @@ delLdif ldif (dn, _) =
         else throwError $ "Entry does not exists, dn: " ++ T.unpack dn
 
 modLdif :: LDIF -> Ldif -> ApplyError LDIF
-modLdif ldif (dn, a) =
+modLdif ldif (dn, m) =
     case HM.lookup dn ldif of
         Just e -> do
-            a' <- applyEntry a e
-            return $ HM.insert dn a' ldif
+            e' <- applyEntry e m
+            return $ if HM.null (rAttrs e')
+                then HM.delete dn ldif
+                else HM.insert dn e' ldif
         Nothing -> throwError $ "Entry does not exists! " ++ T.unpack dn
 
 applyEntry :: LDIFRecord -> LDIFRecord -> ApplyError LDIFRecord
-applyEntry (LDIFChange _ m) l = return $ HM.foldlWithKey' applyAttr l m
+applyEntry le (LDIFChange _ m) = return $ HM.foldlWithKey' applyAttr le m
 applyEntry _ _ = throwError "Invalid apply!"
 
 applyAttr :: LDIFRecord
           -> LdifAttr
           -> HS.HashSet (LDAPModOp, LdifValue)
           -> LDIFRecord
-applyAttr (LDIFAdd dn ldif) name m =
+applyAttr (LDIFAdd dn ldif) k m =
     LDIFAdd dn $
-        HM.filter HS.null $
-          HM.insert name (HS.foldl' applyOp av m) ldif
+        HM.filter (not . HS.null) $
+        HM.insert k (HS.foldl' applyOp av m) ldif
     where
-        av = fromMaybe HS.empty $
-          HM.lookup name ldif
+        av = fromMaybe HS.empty $ HM.lookup k ldif
         applyOp acc (op, v) =
             case op of
                 LdapModAdd -> HS.insert v acc

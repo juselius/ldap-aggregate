@@ -2,12 +2,13 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module TestData where
 
-import SimpleLDIF
-import Control.Arrow (first)
+import LDIF
+import Control.Arrow (first, second)
 import Test.QuickCheck
 import Control.Applicative
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
 
 type AttrList = [(T.Text, [T.Text])]
 
@@ -24,6 +25,14 @@ genLdif' dn av = "dn: " `T.append` dn `T.append` "\n" `T.append` attrs
 
 genLdif :: DN -> AttrList -> LDIF
 genLdif dn av = HM.singleton dn $ makeLdifEntry dn av
+
+makeLdifEntry :: DN -> [(LdifAttr, [LdifValue])]-> LDIFRecord
+makeLdifEntry dn av =
+    LDIFAdd dn (HM.fromList $ map (second HS.fromList) av)
+
+makeLdifChange :: DN -> LDAPModOp -> LdifAttr -> [LdifValue]-> LDIFRecord
+makeLdifChange dn op a v =
+    LDIFChange dn (HM.singleton a (HS.fromList (zip (repeat op) v)))
 
 newtype LdifStr = LdifStr { ldifStr :: T.Text } deriving (Show)
 newtype LdifEntryStr = LdifEntryStr { entryStr :: T.Text } deriving (Show)

@@ -22,7 +22,7 @@ cabal-version:       >=1.10
 
 library
     exposed-modules:
-          SimpleLDIF
+          LDIF
         , CombEditor
     other-modules:
     other-extensions:

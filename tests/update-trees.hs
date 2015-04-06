@@ -4,7 +4,7 @@ module Main where
 
 import System.Environment
 import System.IO
-import SimpleLDIF
+import LDIF
 import DITs
 import qualified Data.Text.IO as T
 

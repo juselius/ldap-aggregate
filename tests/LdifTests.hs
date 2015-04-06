@@ -5,7 +5,7 @@ module LdifTests where
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck as QC
-import SimpleLDIF
+import LDIF
 import TestData
 import Data.List
 import qualified Data.Text as T

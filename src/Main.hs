@@ -10,7 +10,7 @@ import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import Control.Monad
 import LDAP
-import SimpleLDIF
+import LDIF
 import Config
 import DITs
 import CombEditor

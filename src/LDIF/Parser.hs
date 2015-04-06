@@ -9,7 +9,7 @@
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
-module SimpleLDIF.Parser (
+module LDIF.Parser (
       parseLdifStr
     , parseLdifStr'
     , parseLdif
@@ -19,8 +19,8 @@ module SimpleLDIF.Parser (
 import Prelude
 import Data.List
 import Control.Monad
-import SimpleLDIF.Types
-import SimpleLDIF.Preproc
+import LDIF.Types
+import LDIF.Preproc
 import Data.Hashable
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.Text

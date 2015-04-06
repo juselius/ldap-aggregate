@@ -23,7 +23,7 @@ import Data.Monoid
 import Control.Applicative
 import Control.Monad
 import LDAP
-import SimpleLDIF
+import LDIF
 import CombEditor
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM

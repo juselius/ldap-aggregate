@@ -2,9 +2,9 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
-module SimpleLDIF.Apply (applyLdif) where
+module LDIF.Apply (applyLdif) where
 
-import SimpleLDIF.Types
+import LDIF.Types
 import Data.Maybe
 import Control.Monad.Error
 import Control.Monad.Identity

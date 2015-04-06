@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module SimpleLDIF.Types (
+module LDIF.Types (
       LDAPModOp(..)
     , LDAPEntry(..)
     , LDAPMod(..)
@@ -15,6 +15,7 @@ module SimpleLDIF.Types (
     , LdifValue
     , LdifAttrs
     , LdifValues
+    , showLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -82,4 +83,7 @@ instance Show LDIFRecord where
                     formatOp LdapModReplace a = "replace: " ++ a ++ "\n"
                     formatOp _ a = "unknown: " ++ a ++ "\n"
             formatDn dn = "dn: " ++ T.unpack dn ++ "\n"
+
+showLdif :: LDIF -> T.Text
+showLdif l = T.unwords . map (T.pack . show) $ HM.elems l
 

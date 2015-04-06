@@ -26,7 +26,7 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 {-# LANGUAGE OverloadedStrings #-}
-module SimpleLDIF.Preproc (
+module LDIF.Preproc (
      preproc
    , transposePos
    , PosTable

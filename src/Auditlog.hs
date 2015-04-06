@@ -10,7 +10,7 @@ import System.IO
 import Text.Regex.TDFA
 import Data.Maybe
 import Control.Monad
-import SimpleLDIF
+import LDIF
 import CombEditor
 import LDAP
 import qualified Data.Text as T

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Test.Tasty
 import LdifTests
-import SimpleLDIF
+import LDIF
 import TestData
 import EditTests
 import qualified Data.Text as T

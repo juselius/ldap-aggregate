@@ -1,11 +1,11 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module SimpleLDIF.Diff (
+module LDIF.Diff (
       diffLDIF
 ) where
 
-import SimpleLDIF.Types
+import LDIF.Types
 import Data.Maybe
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS

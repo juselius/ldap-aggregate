@@ -11,7 +11,7 @@ import Text.Regex.TDFA
 import Data.Maybe
 import Control.Monad
 import SimpleLDIF
-import Aggregate
+import CombEditor
 import LDAP
 import qualified Data.Text as T
 import qualified Data.Text.IO as T

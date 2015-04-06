@@ -8,7 +8,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
 
-module Aggregate.Edit (
+module CombEditor.Edit (
       Criterion(..)
     , Edit
     , Pattern

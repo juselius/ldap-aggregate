@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Aggregate.Criterion (
+module CombEditor.Criterion (
       IgnoreCriterion(..)
     , RewriteCriterion(..)
     ) where
@@ -13,7 +13,7 @@ import Data.Maybe
 import Data.Monoid
 import Control.Applicative
 import Control.Monad
-import Aggregate.Edit
+import CombEditor.Edit
 
 newtype IgnoreCriterion = IgnoreCriterion [Criterion Pattern] deriving (Show)
 newtype RewriteCriterion = RewriteCriterion [Criterion FromTo] deriving (Show)

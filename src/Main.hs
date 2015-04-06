@@ -13,7 +13,7 @@ import LDAP
 import SimpleLDIF
 import Config
 import DITs
-import Aggregate
+import CombEditor
 import Data.Version
 import qualified Data.Text as T
 
@@ -29,7 +29,7 @@ cmdln = CmdLine {
         &= typFile
     }
     &= verbosity
-    &= help "Aggregate, filter and rewrite LDAP trees."
+    &= help "CombEditor, filter and rewrite LDAP trees."
     &= summary ("Version "
         ++ showVersion version
         ++ ", (c) Jonas Juselius 2015"
@@ -37,7 +37,7 @@ cmdln = CmdLine {
     &= details [
           "LDAP aggregate"
         , ""
-        , "Aggregate, filter and rewrite LDIF from one or more source DITs"
+        , "CombEditor, filter and rewrite LDIF from one or more source DITs"
         , "onto a target DIT."
         , ""
         ]

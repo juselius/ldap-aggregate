@@ -5,7 +5,7 @@ module EditTests (
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Aggregate
+import CombEditor
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
@@ -13,7 +13,7 @@ import qualified Data.Text as T
 import Debug.Trace
 
 editTests :: TestTree
-editTests = testGroup "Aggregate" [
+editTests = testGroup "CombEditor" [
       testCase "filter 0" $ testF0 @?= True
     , testCase "filter 1" $ testF1 @?= True
     , testCase "filter 2" $ testF2 @?= True

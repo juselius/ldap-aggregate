@@ -24,7 +24,7 @@ import Control.Applicative
 import Control.Monad
 import LDAP
 import SimpleLDIF
-import Aggregate
+import CombEditor
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 

@@ -1,7 +1,7 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-module CombEditor (module M) where
+module Editor (module M) where
 
-import CombEditor.Edit as M
-import CombEditor.Criterion as M
+import Editor.Edit as M
+import Editor.Rules as M

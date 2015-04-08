@@ -23,7 +23,7 @@ cabal-version:       >=1.10
 library
     exposed-modules:
           LDIF
-        , CombEditor
+        , Editor
     other-modules:
     other-extensions:
           OverloadedStrings

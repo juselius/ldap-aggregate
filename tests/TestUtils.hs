@@ -18,7 +18,7 @@ import Text.Regex.TDFA
 import LDAP
 import DITs
 import LDIF
-import CombEditor
+import Editor
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 

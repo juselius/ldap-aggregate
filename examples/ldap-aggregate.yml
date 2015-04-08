@@ -12,9 +12,9 @@ target:
         - dn: ou=import,ou=groups,dc=target
         - dn: cn=vip,ou=members,dc=target
         - attr: entryUUID
-        - dn: cn=Robert Smith,ou=users,dc=target
+        - dn: cn=Marve Fleksnes,ou=users,dc=target
           attr: ou
-        - dn: cn=Robert Smith,ou=users,dc=target
+        - dn: cn=Marve Fleksnes,ou=users,dc=target
           attr: ou
           value: foo
 
@@ -34,7 +34,7 @@ source:
           - dn: ou=groups,dc=source
           - dn: cn=user,ou=members,dc=source
           - attr: entryUUID
-          - dn: cn=Robert Smith,ou=users,dc=target
+          - dn: cn=Marve Fleksnes,ou=users,dc=target
             attr: ou
           - dn: ou=users,dc=source
             attr: mail
@@ -53,7 +53,7 @@ source:
             attr:
                 from: (mail)
                 to: e\\1
-          - dn: cn=Robert Smith,ou=users,dc=source
+          - dn: cn=Marve Fleksnes,ou=users,dc=source
             attr: ou
             value:
                 from: Human *Resources
@@ -65,6 +65,8 @@ source:
           - value:
               from: Human
               to: Humanoid
-
-
+      insert:
+          - dn: cn=Marve Fleksnes,ou=users,dc=target
+            attr: mail
+            value: marve@fleksnes.no
 

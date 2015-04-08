@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE LambdaCase #-}
 module DITs (
       bindLdap
     , printSubTree
@@ -33,9 +32,9 @@ data DIT = DIT {
     , binddn :: T.Text
     , passwd :: T.Text
     , basedn :: T.Text
-    , searchBases :: [SearchBase]
-    , ignoreFilters :: [IgnoreCriterion]
-    , rewriteFilters :: [RewriteCriterion]
+    , searchBases    :: [SearchBase]
+    , ignoreFilters  :: [IgnoreRule]
+    , rewriteFilters :: [RewriteRule]
     } deriving (Show)
 
 data SearchBase = SearchBase {
@@ -56,13 +55,13 @@ instance FromJSON DIT where
 
 -- for every dn rewrite, add the corresponding rewrite to attr dn
 addAttrRewriteDn :: DIT -> DIT
-addAttrRewriteDn d@DIT{..} = d { rewriteFilters = foldl f mempty rewriteFilters }
+addAttrRewriteDn d@DIT{..} =
+    d { rewriteFilters = foldl df mempty rewriteFilters }
     where
-        f acc r@(RewriteCriterion c)
-            | ("^$", "") <- criterion (head c) = r:acc
-            | ft <- criterion (head c) =
-                RewriteCriterion [Break ft, Break q, Break q]:r:acc
-                where q = ("", "")
+        df acc r@(RewriteRule (Subst f t _))
+            | "(.*)" <- f = r:acc
+            | otherwise = RewriteRule (Subst f t (Subst f t Done)):r:acc
+        df acc _ = acc
 
 instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase

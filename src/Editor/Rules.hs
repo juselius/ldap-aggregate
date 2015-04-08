@@ -24,49 +24,45 @@ newtype IgnoreRule  = IgnoreRule  (Rule T.Text) deriving (Show)
 newtype RewriteRule = RewriteRule (Rule T.Text) deriving (Show)
 newtype InsertRule  = InsertRule  (Rule T.Text) deriving (Show)
 
+instance FromJSON IgnoreRule where
+    parseJSON (Object o) = do
+        dn    <- o .:? "dn"
+        attr  <- o .:? "attr"
+        value <- o .:? "value"
+        let
+            dnR    = maybe every final dn
+            valueR = maybe Done final value
+            attrR  = if isNothing value
+                then maybe Done final attr
+                else maybe every final attr
+        return . IgnoreRule $ dnR `mappend` attrR `mappend` valueR
+            where
+                every = Delete ".*" Done
+                final x = Delete x Done
+    parseJSON _ = mzero
 
-
--- instance FromJSON IgnoreRule where
---     parseJSON (Object o) = do
---         dn    <- o .:? "dn" .:! ".*"
---         attr  <- o .:? "attr"
---         value <- o .:? "value"
---         return $ IgnoreRule (Delete dn (Delete attr (Delete value Done)))
---              toRule (attr `mplus` value) dn
---              toRule value attr
---              toRule Nothing value
---         where
---             toRule :: Maybe a -> Maybe T.Text -> Rule T.Text
---             toRule p v
---                 | isJust p = Cont v'
---                 | otherwise = Break v'
---                 where v' = fromMaybe mempty v
---     parseJSON _ = mzero
-
--- instance FromJSON RewriteRule where
---     parseJSON (Object o) = do
---         dn    <- o `getFromTo` "dn"
---         attr  <- o `getFromTo` "attr"
---         value <- o `getFromTo` "value"
---         return $ RewriteRule [
---               toCriterion (attr `mplus` value) dn
---             , toCriterion value attr
---             , toCriterion Nothing value
---             ]
---         where
---             getFromTo x s = fmap parseFromTo (x .:? s)
---             toCriterion :: Maybe a -> Maybe FromTo -> Criterion FromTo
---             toCriterion p v
---                 | isJust p = Cont v'
---                 | otherwise = Break v'
---                 where v' = fromMaybe noMatch v
---             parseFromTo :: Maybe Value -> Maybe FromTo
---             parseFromTo (Just (Object x)) =
---                 flip parseMaybe x $ \y -> (,)
---                     <$> y .: "from"
---                     <*> y .: "to"
---             parseFromTo _ = Nothing
---             noMatch = ("^$", "")
---     parseJSON _ = mzero
+instance FromJSON RewriteRule where
+    parseJSON (Object o) = do
+        dn    <- o `getFromTo` "dn"
+        attr  <- o `getFromTo` "attr"
+        value <- o `getFromTo` "value"
+        let
+            dnR    = maybe every final dn
+            valueR = maybe Done final value
+            attrR  = if isNothing value
+                then maybe Done final attr
+                else maybe every final attr
+        return . RewriteRule $ dnR `mappend` attrR `mappend` valueR
+        where
+            every = Subst "(.*)" "\\1" Done
+            final (f, t) = Subst f t Done
+            getFromTo x s = fmap parseFromTo (x .:? s)
+            parseFromTo :: Maybe Value -> Maybe (T.Text, T.Text)
+            parseFromTo (Just (Object x)) =
+                flip parseMaybe x $ \y -> (,)
+                    <$> y .: "from"
+                    <*> y .: "to"
+            parseFromTo _ = Nothing
+    parseJSON _ = mzero
 
 

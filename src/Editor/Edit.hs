@@ -10,6 +10,7 @@
 module Editor.Edit (
       Editable(..)
     , Editor(..)
+    , Rule(..)
     ) where
 
 import Data.Monoid

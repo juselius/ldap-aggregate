@@ -4,17 +4,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
 
 module CombEditor.Edit (
-      Criterion(..)
-    , Edit
-    , Pattern
-    , FromTo
+      Rule(..)
+    , Editable
+    , Editor
     , edit
 ) where
+
 import Data.Monoid
 import Text.Regex
 import Text.Regex.TDFA
@@ -22,69 +21,76 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
-type Pattern = T.Text
-type FromTo = (Pattern, T.Text)
-
-data Criterion a =
-      Cont  { criterion :: a }
-    | Break { criterion :: a }
+data Rule a =
+      Insert a (Rule a)
+    | Delete a (Rule a)
+    | Subst a a (Rule a)
+    | Done
     deriving (Show)
 
-class (Monoid t, Eq t) => Edit t where
-    edit :: (Filter a, Edit t) => [a] -> t -> t
+class (Monoid t, Eq t) => Editable t where
+    edit :: (Editor a, Editable t) => a -> t -> t
 
-class Filter a where
-    type MatchP :: *
-    matchP :: a -> MatchP -> Bool
-    editP :: a -> MatchP -> MatchP
-    contP :: a -> Bool
+class Editor a where
+    type T  :: *
+    subst   :: a -> T -> T
+    matchP  :: a -> T -> Bool
+    contP   :: a -> T -> Bool
+    next    :: a -> a
 
-instance (Monoid v, Edit v) => Edit (HM.HashMap T.Text v) where
-    edit f = HM.foldlWithKey' revise mempty
+instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
+    edit e = HM.foldlWithKey' runEdit mempty
         where
-            c = head f
-            revise acc k v
-                | matchP c k
-                , False <- contP c
-                , k' <- editP c k =
-                    if k' == mempty
+            runEdit acc k v
+                | matchP e k
+                , not $ contP e k
+                , k' <- subst e k =
+                    if k == mempty
                         then acc
                         else HM.insert k' v acc
-                | matchP c k
-                , True <- contP c
-                , k' <- editP c k
-                , v' <- edit (tail f) v =
-                    if | v' == mempty -> acc
-                       | k' == mempty -> HM.insert k  v' acc
-                       | otherwise    -> HM.insert k' v' acc
+                | matchP e k
+                , contP e k
+                , k' <- subst e k
+                , v' <- edit (next e) v =
+                    if
+                        | v' == mempty -> acc
+                        | k' == mempty -> HM.insert k  v' acc
+                        | otherwise    -> HM.insert k' v' acc
                 | otherwise = HM.insert k v acc
 
-instance Edit (HS.HashSet T.Text) where
-    edit f = HS.foldl' revise mempty
+instance Editable (HS.HashSet T.Text) where
+    edit e = HS.foldl' runEdit mempty
         where
-            c = head f
-            revise acc v
-                | matchP c v
-                , False <- contP c
-                , v' <- editP c v =
+            runEdit acc v
+                | matchP e v
+                , v' <- subst e v =
                     if v' == mempty
                         then acc
                         else HS.insert v' acc
                 | otherwise = HS.insert v acc
 
 
-instance Filter (Criterion T.Text) where
-    type MatchP = T.Text
-    matchP (criterion -> p) s = T.unpack s =~ T.unpack p
-    editP _ _ = mempty
-    contP (Cont _) = True
-    contP _ = False
+instance Editor (Rule T.Text) where
+    type T = T.Text
+    subst r v
+        | Insert t _   <- r = t
+        | Delete _ Done   <- r = mempty
+        | Delete t _      <- r = t
+        | Subst  f t _ <- r = T.pack $ subRegex
+            (mkRegex (T.unpack f)) (T.unpack v) (T.unpack t)
+        | otherwise         = mempty
+    matchP r v
+        | Insert p _   <- r = T.unpack v =~ T.unpack p
+        | Delete p _   <- r = T.unpack v =~ T.unpack p
+        | Subst  f _ _ <- r = T.unpack v =~ T.unpack f
+        | otherwise         = False
+    contP r _
+        | Done         <- r = False
+        | otherwise         = True
+    next r
+        | Insert _ n   <- r = n
+        | Delete _ n   <- r = n
+        | Subst  _ _ n <- r = n
+        | otherwise         = Done
 
-instance Filter (Criterion FromTo) where
-    type MatchP = T.Text
-    matchP (criterion -> (p, _)) s = T.unpack s =~ T.unpack p
-    editP (criterion -> (f, t)) s = T.pack $ subRegex
-        (mkRegex (T.unpack f)) (T.unpack s) (T.unpack t)
-    contP (Cont _) = True
-    contP _ = False
 

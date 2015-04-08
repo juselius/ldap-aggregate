@@ -5,14 +5,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
-
-module CombEditor.Edit (
-      Rule(..)
-    , Editable
-    , Editor
-    , edit
-) where
+module Editor.Edit (
+      Editable(..)
+    , Editor(..)
+    ) where
 
 import Data.Monoid
 import Text.Regex
@@ -20,13 +18,6 @@ import Text.Regex.TDFA
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
-
-data Rule a =
-      Insert a (Rule a)
-    | Delete a (Rule a)
-    | Subst a a (Rule a)
-    | Done
-    deriving (Show)
 
 class (Monoid t, Eq t) => Editable t where
     edit :: (Editor a, Editable t) => a -> t -> t
@@ -36,7 +27,25 @@ class Editor a where
     subst   :: a -> T -> T
     matchP  :: a -> T -> Bool
     contP   :: a -> T -> Bool
-    next    :: a -> a
+    nextR   :: a -> a
+
+data Rule a =
+      Insert { pat :: a, below :: (Rule a) }
+    | Delete { pat :: a, below :: (Rule a) }
+    | Subst  { pat :: a, subpat :: a, below :: (Rule a) }
+    | Done
+    deriving (Show)
+
+instance Monoid (Rule a) where
+    mempty = Done
+    mappend a Done = a
+    mappend Done a = a
+    mappend a b = if atend a
+        then a { below = b }
+        else a { below = below a `mappend` b }
+        where
+            atend (below -> Done) = True
+            atend _ = False
 
 instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
     edit e = HM.foldlWithKey' runEdit mempty
@@ -51,7 +60,7 @@ instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
                 | matchP e k
                 , contP e k
                 , k' <- subst e k
-                , v' <- edit (next e) v =
+                , v' <- edit (nextR e) v =
                     if
                         | v' == mempty -> acc
                         | k' == mempty -> HM.insert k  v' acc
@@ -87,7 +96,7 @@ instance Editor (Rule T.Text) where
     contP r _
         | Done         <- r = False
         | otherwise         = True
-    next r
+    nextR r
         | Insert _ n   <- r = n
         | Delete _ n   <- r = n
         | Subst  _ _ n <- r = n

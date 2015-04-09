@@ -31,11 +31,11 @@ class Editor a where
     nextR   :: a -> a
 
 data Rule a =
-      Insert { pat :: a, below :: (Rule a) }
-    | Delete { pat :: a, below :: (Rule a) }
-    | Subst  { pat :: a, subpat :: a, below :: (Rule a) }
+      Insert { pat :: a, below :: Rule a }
+    | Delete { pat :: a, below :: Rule a }
+    | Subst  { pat :: a, subpat :: a, below :: Rule a }
     | Done
-    deriving (Show)
+    deriving (Show, Eq)
 
 instance Monoid (Rule a) where
     mempty = Done
@@ -64,7 +64,7 @@ instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
                 , v' <- edit (nextR e) v =
                     if
                         | v' == mempty -> acc
-                        | k' == mempty -> HM.insert k  v' acc
+                        | k' == mempty -> acc
                         | otherwise    -> HM.insert k' v' acc
                 | otherwise = HM.insert k v acc
 
@@ -92,7 +92,6 @@ instance Editor (Rule T.Text) where
         | Delete _   Done <- r = False
         | Subst  _ _ Done <- r = False
         | Done            <- r = False
-        | otherwise            = True
         | otherwise            = True
     nextR r
         | Insert _ n   <- r = n

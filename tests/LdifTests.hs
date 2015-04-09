@@ -9,11 +9,17 @@ import LDIF
 import TestData
 import Data.List
 import qualified Data.Text as T
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
 
--- import Debug.Trace
+import Debug.Trace
 
 ldifTests :: TestTree
-ldifTests = testGroup "LDIF properties" [ldifPropertyTests, ldifUnitTests]
+ldifTests = testGroup "LDIF" [
+      ldifPropertyTests
+    , ldifUnitTests
+    , ldapUtilsTest
+    ]
 
 ldifPropertyTests = testGroup "LDIF properties" [
       QC.testProperty "parser is idempotent 1" ldifParserIdempotent1
@@ -22,11 +28,17 @@ ldifPropertyTests = testGroup "LDIF properties" [
     , QC.testProperty "apply diff is idempotent" ldifApplyDiffIdempotent
     ]
 
-ldifUnitTests = testGroup "LDIF unit tests" [
+ldifUnitTests = testGroup "LDIF tests" [
       testCase "apply diff 1 2" $
         ldifApplyDiff testLdif1 testLdif2 @?= True
     , testCase "apply diff 2 1" $
         ldifApplyDiff testLdif2 testLdif1 @?= True
+    ]
+
+ldapUtilsTest = testGroup "LDAP tests" [
+      testCase "ldapToLdif" $ ldapToLdifTest @?= True
+    , testCase "recordToLdapAdd" $ recordToLdapAddTest  @?= True
+    , testCase "recordToLdapMod" $ recordToLdapModTest @?= True
     ]
 
 ldifParserIdempotent1 :: LdifStr -> Bool
@@ -60,3 +72,54 @@ ldifApplyDiff f t = either (const False) (== t) newL
     where
         newL = applyLdif dl f
         dl = diffLDIF f t
+
+ldapToLdifTest :: Bool
+ldapToLdifTest = ldapToLdif ldapTestEntry == ldapTestRef
+
+recordToLdapAddTest :: Bool
+recordToLdapAddTest = sortVals (recordToLdapAdd ldapTestAttrs) == ref
+    where
+        ref = [
+              LDAPMod LdapModAdd "test0" ["test0"]
+            , LDAPMod LdapModAdd "test1" ["test1", "test2"]
+            ]
+
+recordToLdapModTest :: Bool
+recordToLdapModTest = sortVals (recordToLdapMod ldapTestMods) == ref
+    where
+        ref = [
+              LDAPMod LdapModAdd "test0" ["test0"]
+            , LDAPMod LdapModDelete "test1" ["test1"]
+            , LDAPMod LdapModReplace "test1" ["test2"]
+            ]
+
+ldapTestEntry :: [LDAPEntry]
+ldapTestEntry = [LDAPEntry "test" [
+       ("test0", ["test0"])
+     , ("test1", ["test1", "test2"])
+     ]]
+
+ldapTestRef :: HM.HashMap DN LDIFRecord
+ldapTestRef = HM.fromList [("test", ldapTestRec)]
+
+ldapTestRec :: LDIFRecord
+ldapTestRec = LDIFAdd "test" ldapTestAttrs
+
+ldapTestAttrs :: LdifAttrs T.Text
+ldapTestAttrs = HM.fromList [
+       ("test0", HS.fromList ["test0"])
+     , ("test1", HS.fromList ["test1", "test2"])
+     ]
+
+ldapTestMods :: LdifAttrs (LDAPModOp, T.Text)
+ldapTestMods = HM.fromList [
+       ("test0", HS.fromList [(LdapModAdd, "test0")])
+     , ("test1", HS.fromList [
+              (LdapModDelete, "test1")
+            , (LdapModReplace, "test2")
+            ]
+       )
+     ]
+
+sortVals :: [LDAPMod] -> [LDAPMod]
+sortVals = map (\x -> x {modVals = sort (modVals x)})

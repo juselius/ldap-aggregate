@@ -22,30 +22,35 @@ newtype RewriteRule = RewriteRule (Rule T.Text) deriving (Show, Eq)
 newtype InsertRule  = InsertRule  (Rule T.Text) deriving (Show, Eq)
 
 type RuleT = Rule T.Text
-type RuleF a = Maybe a -> Rule T.Text
 
 instance FromJSON IgnoreRule where
     parseJSON (Object o) = do
-        dn    <- liftM dnR   $ o .:? "dn"
-        attr  <- liftM attrR $ o .:? "attr"
-        value <- liftM valR  $ o .:? "value"
-        return . IgnoreRule $ dn `mappend` attr `mappend` value
+        dn    <- o .:? "dn"
+        attr  <- o .:? "attr"
+        val   <- o .:? "value"
+        let
+            dn'   = mkRule glob stencil (attr `mplus` val) dn
+            attr' = mkRule glob stencil val attr
+            val'  = mkRule glob stencil Nothing val
+        return . IgnoreRule $ dn' `mappend` attr' `mappend` val'
         where
-            (dnR, attrR, valR) = mkRs glob final
             glob = Delete ".*" Done
-            final x = Delete x Done
+            stencil x = Delete x Done
     parseJSON _ = mzero
 
 instance FromJSON RewriteRule where
     parseJSON (Object o) = do
-        dn    <- liftM dnR   $ o `getFromTo` "dn"
-        attr  <- liftM attrR $ o `getFromTo` "attr"
-        value <- liftM valR  $ o `getFromTo` "value"
-        return . RewriteRule $ dn `mappend` attr `mappend` value
+        dn    <- o `getFromTo` "dn"
+        attr  <- o `getFromTo` "attr"
+        val <- o `getFromTo` "value"
+        let
+            dn'   = mkRule glob stencil (attr `mplus` val) dn
+            attr' = mkRule glob stencil val attr
+            val'  = mkRule glob stencil Nothing val
+        return . RewriteRule $ dn' `mappend` attr' `mappend` val'
         where
-            (dnR, attrR, valR) = mkRs glob final
             glob = Subst "(.*)" "\\1" Done
-            final (f, t) = Subst f t Done
+            stencil (f, t) = Subst f t Done
             getFromTo x s = fmap parseFromTo (x .:? s)
     parseJSON _ = mzero
 
@@ -56,11 +61,8 @@ parseFromTo (Just (Object x)) =
         <*> y .: "to"
 parseFromTo _ = Nothing
 
-mkRs :: RuleT -> (a -> RuleT) -> (RuleF a, RuleF a, RuleF a)
-mkRs e f = (
-      maybe e f
-    , maybe Done f
-    , \x -> if isNothing x
-              then maybe Done f x
-              else maybe e f x
-    )
+mkRule :: RuleT -> (a -> RuleT) -> Maybe a -> Maybe a -> RuleT
+mkRule e s x t = if isNothing x
+      then maybe Done s t
+      else maybe e s t
+

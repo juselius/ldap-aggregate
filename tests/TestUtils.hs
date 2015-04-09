@@ -55,17 +55,18 @@ populateSource :: LDAP -> IO ()
 populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode T.hGetContents
     lpops <- withFile "./ldif/source.populate.ldif" ReadMode T.hGetContents
-    let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
-    commit ltree
-    commit lpops
+    commit ldap ltree
+    commit ldap lpops
 
 populateTarget :: LDAP -> IO ()
 populateTarget ldap = do
     ltree <- withFile "./ldif/target.tree.ldif" ReadMode T.hGetContents
     lpops <- withFile "./ldif/target.populate.ldif" ReadMode T.hGetContents
-    let commit x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
-    commit ltree
-    commit lpops
+    commit ldap ltree
+    commit ldap lpops
+
+commit :: LDAP -> String -> IO()
+commit ldap x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
 
 --
 -- Test data

@@ -41,7 +41,7 @@ ldifParserIdempotent2 (LdifStr s) = parseLdif s == parseLdif l
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =
-        "changetype" `T.isInfixOf` (showLdif $ dl)
+        "changetype" `T.isInfixOf` showLdif dl
         where
             l1 = parseLdif s1
             l2 = parseLdif s2

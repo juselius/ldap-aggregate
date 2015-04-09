@@ -35,12 +35,12 @@ data DIT = DIT {
     , searchBases    :: [SearchBase]
     , ignoreFilters  :: [IgnoreRule]
     , rewriteFilters :: [RewriteRule]
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data SearchBase = SearchBase {
       searchBase :: T.Text
     , searchFilter :: T.Text
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 instance FromJSON DIT where
     parseJSON (Object o) = fmap addAttrRewriteDn $ DIT

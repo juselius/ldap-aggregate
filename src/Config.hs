@@ -19,12 +19,12 @@ import DITs
 data Config = Config {
       targetDIT :: DIT
     , sourceDIT :: [DIT]
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 instance FromJSON Config where
     parseJSON (Object o) = Config
         <$>  (o .: "target")
-        <*>  (o .: "source")
+        <*>  (o .: "sources")
     parseJSON _ = mzero
 
 readConfig :: FilePath -> IO Config

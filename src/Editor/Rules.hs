@@ -17,9 +17,9 @@ import Control.Monad
 import Editor.Edit
 import qualified Data.Text as T
 
-newtype IgnoreRule  = IgnoreRule  (Rule T.Text) deriving (Show)
-newtype RewriteRule = RewriteRule (Rule T.Text) deriving (Show)
-newtype InsertRule  = InsertRule  (Rule T.Text) deriving (Show)
+newtype IgnoreRule  = IgnoreRule  (Rule T.Text) deriving (Show, Eq)
+newtype RewriteRule = RewriteRule (Rule T.Text) deriving (Show, Eq)
+newtype InsertRule  = InsertRule  (Rule T.Text) deriving (Show, Eq)
 
 type RuleT = Rule T.Text
 type RuleF a = Maybe a -> Rule T.Text

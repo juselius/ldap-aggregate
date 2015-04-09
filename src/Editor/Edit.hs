@@ -25,7 +25,7 @@ class (Monoid t, Eq t) => Editable t where
 
 class Editor a where
     type T  :: *
-    subst   :: a -> T -> T
+    applyR  :: a -> T -> T
     matchP  :: a -> T -> Bool
     contP   :: a -> T -> Bool
     nextR   :: a -> a
@@ -54,13 +54,13 @@ instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
             runEdit acc k v
                 | matchP e k
                 , not $ contP e k
-                , k' <- subst e k =
-                    if k == mempty
+                , k' <- applyR e k =
+                    if k' == mempty
                         then acc
                         else HM.insert k' v acc
                 | matchP e k
                 , contP e k
-                , k' <- subst e k
+                , k' <- applyR e k
                 , v' <- edit (nextR e) v =
                     if
                         | v' == mempty -> acc
@@ -73,7 +73,7 @@ instance Editable (HS.HashSet T.Text) where
         where
             runEdit acc v
                 | matchP e v
-                , v' <- subst e v =
+                , v' <- applyR e v =
                     if v' == mempty
                         then acc
                         else HS.insert v' acc
@@ -82,25 +82,29 @@ instance Editable (HS.HashSet T.Text) where
 
 instance Editor (Rule T.Text) where
     type T = T.Text
-    subst r v
-        | Insert t _   <- r = t
-        | Delete _ Done   <- r = mempty
-        | Delete t _      <- r = t
-        | Subst  f t _ <- r = T.pack $ subRegex
-            (mkRegex (T.unpack f)) (T.unpack v) (T.unpack t)
-        | otherwise         = mempty
     matchP r v
         | Insert p _   <- r = T.unpack v =~ T.unpack p
         | Delete p _   <- r = T.unpack v =~ T.unpack p
         | Subst  f _ _ <- r = T.unpack v =~ T.unpack f
         | otherwise         = False
     contP r _
-        | Done         <- r = False
-        | otherwise         = True
+        | Insert _   Done <- r = False
+        | Delete _   Done <- r = False
+        | Subst  _ _ Done <- r = False
+        | Done            <- r = False
+        | otherwise            = True
+        | otherwise            = True
     nextR r
         | Insert _ n   <- r = n
         | Delete _ n   <- r = n
         | Subst  _ _ n <- r = n
         | otherwise         = Done
+    applyR r v
+        | Insert t _    <- r = t
+        | Delete _ Done <- r = mempty
+        | Delete t _    <- r = t
+        | Subst  f t _  <- r = T.pack $ subRegex
+            (mkRegex (T.unpack f)) (T.unpack v) (T.unpack t)
+        | otherwise         = mempty
 
 

@@ -114,6 +114,7 @@ test-suite tests
             , tasty-quickcheck >=0.8 && <0.9
             , tasty-smallcheck >=0.8 && <0.9
             , tasty-hunit >=0.9 && <0.10
+            , transformers >= 0.3 && <0.4
 
 benchmark performance
     type:           exitcode-stdio-1.0

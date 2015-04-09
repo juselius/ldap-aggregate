@@ -22,12 +22,17 @@ sources:
           - dn: ou=users,dc=source
           - attr: mail
           - value: ^foo@.*
-      # rewrite:
-      #     - dn: cn=Marve Fleksnes,ou=users,dc=source
-      #       attr: ou
-      #       value:
-      #           from: Human *Resources
-      #           to: Human Incompetence
+      rewrite:
+          - dn:
+              from: ou=users,dc=source
+              to: ou=u,dc=target
+          - attr:
+                from: mail
+                to: post
+          - attr: mail
+            value:
+                from: ^foo(@.*)
+                to: bar\\1
       # insert:
       #     - dn: cn=Marve Fleksnes,ou=users,dc=target
       #       attr: mail

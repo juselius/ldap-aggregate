@@ -40,7 +40,7 @@ data DIT = DIT {
 data SearchBase = SearchBase {
       searchBase :: T.Text
     , searchFilter :: T.Text
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Ord)
 
 instance FromJSON DIT where
     parseJSON (Object o) = fmap addAttrRewriteDn $ DIT
@@ -58,10 +58,9 @@ addAttrRewriteDn :: DIT -> DIT
 addAttrRewriteDn d@DIT{..} =
     d { rewriteFilters = foldl df mempty rewriteFilters }
     where
-        df acc r@(RewriteRule (Subst f t _))
-            | "(.*)" <- f = r:acc
-            | otherwise = RewriteRule (Subst f t (Subst f t Done)):r:acc
-        df acc _ = acc
+        df acc r@(RewriteRule (Subst f t _)) =
+            RewriteRule (Cont ".*" (Subst f t Done)):r:acc
+        df acc r = r:acc
 
 instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase

@@ -23,16 +23,10 @@ sources:
           - attr: mail
           - value: ^foo@.*
       rewrite:
-          - dn:
-              from: ou=users,dc=source
-              to: ou=u,dc=target
-          - attr:
-                from: mail
-                to: post
+          - dn: ou=users,dc=source --> ou=u,dc=target
+          - attr: mail --> post
           - attr: mail
-            value:
-                from: ^foo(@.*)
-                to: bar\\1
+            value: ^foo(@.*) --> bar\1
       # insert:
       #     - dn: cn=Marve Fleksnes,ou=users,dc=target
       #       attr: mail

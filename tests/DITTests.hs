@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module DITTests (
     ditTests
 ) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Data.List
 import Editor
 import Config
 import DITs
@@ -19,8 +21,20 @@ ditTests =
 
 testParse :: Assertion
 testParse = do
-    c <- readConfig "test.yml"
-    c @?= Config tDIT [sDIT0]
+    c <- readConfig "tests/test.yml"
+    (sortConf c) @?= (sortConf $ Config tDIT [sDIT0])
+
+sortConf :: Config -> Config
+sortConf c@Config{..} = c {
+            targetDIT = srtDIT targetDIT
+          , sourceDIT = map srtDIT sourceDIT
+          }
+    where
+        srtDIT d@DIT{..} = d {
+              searchBases = sort searchBases
+            , ignoreFilters = sort ignoreFilters
+            , rewriteFilters = sort rewriteFilters
+            }
 
 tDIT :: DIT
 tDIT = DIT {
@@ -51,15 +65,18 @@ sDIT0 = DIT {
         ]
     , ignoreFilters  = [
           IgnoreRule $ Delete "ou=users,dc=source" Done
-        , IgnoreRule $ Delete ".*" $ Delete "mail" Done
-        , IgnoreRule $ Delete ".*" $ Delete ".*" $ Delete "^foo@.*" Done
+        , IgnoreRule $ Cont ".*" $ Delete "mail" Done
+        , IgnoreRule $ Cont ".*" $ Cont ".*" $ Delete "^foo@.*" Done
         ]
     , rewriteFilters = [
-          RewriteRule $ Subst "ou=users,dc=source" "ou=u,ou=target" Done
-        , RewriteRule $ Subst "(.*)" "\\1" $ Subst "mail" "post" Done
+          RewriteRule $ Subst "ou=users,dc=source" "ou=u,dc=target" Done
+        , RewriteRule $ Cont ".*" $
+            Subst "ou=users,dc=source" "ou=u,dc=target" Done
+        , RewriteRule $ Cont ".*" $
+            Subst "mail" "post" Done
         , RewriteRule $
-            Subst "(.*)" "\\1" $
-              Subst "mail" "mail" $
+            Cont ".*" $
+              Cont "mail" $
                 Subst "^foo(@.*)" "bar\\1" Done
         ]
     }

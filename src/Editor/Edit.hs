@@ -31,21 +31,22 @@ class Editor a where
     nextR   :: a -> a
 
 data Rule a =
-      Insert { pat :: a, below :: Rule a }
-    | Delete { pat :: a, below :: Rule a }
-    | Subst  { pat :: a, subpat :: a, below :: Rule a }
+      Insert { pat :: a, next :: Rule a }
+    | Delete { pat :: a, next :: Rule a }
+    | Subst  { pat :: a, subpat :: a, next :: Rule a }
+    | Cont   { pat :: a, next :: Rule a }
     | Done
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 instance Monoid (Rule a) where
     mempty = Done
     mappend a Done = a
     mappend Done a = a
     mappend a b = if atend a
-        then a { below = b }
-        else a { below = below a `mappend` b }
+        then a { next = b }
+        else a { next = next a `mappend` b }
         where
-            atend (below -> Done) = True
+            atend (next -> Done) = True
             atend _ = False
 
 instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
@@ -85,25 +86,30 @@ instance Editor (Rule T.Text) where
     matchP r v
         | Insert p _   <- r = T.unpack v =~ T.unpack p
         | Delete p _   <- r = T.unpack v =~ T.unpack p
-        | Subst  f _ _ <- r = T.unpack v =~ T.unpack f
+        | Subst  p _ _ <- r = T.unpack v =~ T.unpack p
+        | Cont   p _   <- r = T.unpack v =~ T.unpack p
         | otherwise         = False
     contP r _
         | Insert _   Done <- r = False
         | Delete _   Done <- r = False
         | Subst  _ _ Done <- r = False
+        | Cont   _   Done <- r = False
+        | Cont   _ _      <- r = True
         | Done            <- r = False
         | otherwise            = True
     nextR r
         | Insert _ n   <- r = n
         | Delete _ n   <- r = n
         | Subst  _ _ n <- r = n
+        | Cont   _ n   <- r = n
         | otherwise         = Done
     applyR r v
         | Insert t _    <- r = t
         | Delete _ Done <- r = mempty
-        | Delete t _    <- r = t
-        | Subst  f t _  <- r = T.pack $ subRegex
-            (mkRegex (T.unpack f)) (T.unpack v) (T.unpack t)
+        | Delete _ _    <- r = v
+        | Cont   _ _    <- r = v
+        | Subst  p s _  <- r = T.pack $ subRegex
+            (mkRegex (T.unpack p)) (T.unpack v) (T.unpack s)
         | otherwise         = mempty
 
 

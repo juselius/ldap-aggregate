@@ -11,9 +11,11 @@ module Editor.Edit (
       Editable(..)
     , Editor(..)
     , Rule(..)
+    , runEdits
     ) where
 
 import Data.Monoid
+import Data.List
 import Text.Regex
 import Text.Regex.TDFA
 import qualified Data.Text as T
@@ -37,6 +39,9 @@ data Rule a =
     | Cont   { pat :: a, next :: Rule a }
     | Done
     deriving (Show, Eq, Ord)
+
+runEdits :: (Editor e, Editable v) => [e] -> v -> v
+runEdits e v = foldl' (flip edit) v e
 
 instance Monoid (Rule a) where
     mempty = Done

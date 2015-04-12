@@ -17,9 +17,17 @@ import Control.Monad
 import Editor.Edit
 import qualified Data.Text as T
 
-newtype IgnoreRule  = IgnoreRule  (Rule T.Text) deriving (Show, Eq, Ord)
-newtype RewriteRule = RewriteRule (Rule T.Text) deriving (Show, Eq, Ord)
-newtype InsertRule  = InsertRule  (Rule T.Text) deriving (Show, Eq, Ord)
+newtype IgnoreRule  = IgnoreRule  {
+    doIgnore  :: Rule T.Text
+    } deriving (Show, Eq, Ord)
+
+newtype RewriteRule = RewriteRule {
+    doRewrite :: Rule T.Text
+    } deriving (Show, Eq, Ord)
+
+newtype InsertRule  = InsertRule  {
+    doInsert  :: Rule T.Text
+    } deriving (Show, Eq, Ord)
 
 instance FromJSON IgnoreRule where
     parseJSON (Object o) = do

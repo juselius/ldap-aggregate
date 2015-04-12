@@ -1,0 +1,41 @@
+target:
+    uri: target
+    base: dc=target
+    binddn: cn=admin,dc=target
+    password: secret
+    search:
+        - basedn: dc=target
+    ignore:
+        - dn: ou=users,dc=target
+          attr: entryUUID
+          value: felgen
+
+sources:
+    - uri: source
+      binddn: cn=admin,dc=source
+      base: dc=source
+      password: secret
+      search:
+          - basedn: dc=source
+            filter: '*'
+      ignore:
+          - dn: uid=c.*
+          - attr: e
+          - value: d2
+          - dn: uid=a,ou=sou.*
+            attr: d
+            value: d1
+          - attr: c
+            value: c1
+      rewrite:
+          - dn: dc=source --> dc=target
+          - dn: ou=sou --> ou=tou
+          - attr: a --> x
+          - dn: uid=b
+            attr: d
+            value: (d[0]) --> \10d
+      # insert:
+      #     - dn: cn=Marve Fleksnes,ou=users,dc=target
+      #       attr: mail
+      #       value: marve@fleksnes.no
+

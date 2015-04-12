@@ -1,0 +1,27 @@
+dn: uid=a,ou=sou,dc=source
+a: a
+b: b
+c: c0
+c: c1
+d: d0
+d: d1
+d: d2
+e: e
+
+dn: uid=b,ou=sou,dc=source
+a: a
+b: b
+c: c0
+c: c1
+d: d0
+d: d1
+e: e
+
+dn: uid=c,ou=xou,dc=source
+a: a
+b: b
+c: c0
+c: c1
+d: d0
+d: d1
+e: e

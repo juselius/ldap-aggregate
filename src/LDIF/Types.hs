@@ -3,6 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module LDIF.Types (
@@ -10,14 +11,13 @@ module LDIF.Types (
     , LDAPEntry(..)
     , LDAPMod(..)
     , LDIFRecord(..)
+    , LDIFOper(..)
     , LDIFAttrs(..)
     , LDIFValues
-    , LDIF
-    , Ldif
+    , LDIF(..)
     , DN
     , LdifAttr
     , LdifValue
-    , showLdif
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -31,9 +31,13 @@ import qualified Data.Text as T
 type DN = T.Text
 type LdifAttr = T.Text
 type LdifValue = T.Text
-type Ldif = (DN, LDIFRecord)
-type LDIF = HM.HashMap DN LDIFRecord
 type LDIFValues a = HS.HashSet a
+
+-- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFOper)
+data LDIF = LDIF {
+      lRec :: HM.HashMap DN LDIFRecord
+    , lOp  :: HM.HashMap DN LDIFOper
+    }
 
 newtype LDIFAttrs a = LDIFAttrs {
     toHM :: HM.HashMap LdifAttr (LDIFValues a)
@@ -50,7 +54,6 @@ data LDIFRecord = LDIFRecord  {
       rDn :: DN
     , rAttrs :: LDIFAttrs T.Text
     }
-
 
 data LDIFOper
     = LDIFAdd {
@@ -72,6 +75,11 @@ instance Monoid LDIFRecord where
 instance Monoid (LDIFAttrs T.Text) where
     mempty = LDIFAttrs mempty
     mappend (LDIFAttrs a) (LDIFAttrs a') = LDIFAttrs (a `mappend` a')
+
+instance Show LDIF where
+    show LDIF{..} = p lRec ++ p lOp
+        where
+            p x = unwords . map show $ HM.elems x
 
 instance Show LDIFRecord where
     show (LDIFRecord dn av) =
@@ -114,12 +122,6 @@ instance Show (LDIFAttrs (LDAPModOp, T.Text)) where
             formatOp _ a =
                 "unknown: " `T.append` a `T.append` "\n"
 
-showLdif :: LDIF -> T.Text
-showLdif l = T.unwords . map (T.pack . show) $ HM.elems l
-
--- pprintLdif :: (a -> String) ->  -> String
--- pprintLdif f av = concatMap f . map (second HS.toList) $ HM.toList av
-
-formatDn :: T.Text -> String
+formatDn :: DN -> String
 formatDn dn = "dn: " ++ T.unpack dn ++ "\n"
 

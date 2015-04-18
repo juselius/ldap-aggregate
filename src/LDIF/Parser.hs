@@ -9,11 +9,12 @@
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE LambdaCase #-}
 module LDIF.Parser (
       parseLdifStr
-    , parseLdifStr'
     , parseLdif
-    , parseLdif'
+    -- , parseLdif'
+    -- , parseLdifStr'
 ) where
 
 import Prelude
@@ -27,23 +28,17 @@ import "parsec" Text.Parsec.Text
 import Control.Arrow (second)
 import Control.Applicative ((<$>))
 import qualified Data.Text as T
-import qualified Data.HashMap.Lazy as M
-import qualified Data.HashSet as S
+import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
+
+data Ldif = LdifRec (DN, LDIFRecord) | LdifOp (DN, LDIFOper)
 
 parseLdif :: T.Text -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
-parseLdif' :: T.Text -> [Ldif]
-parseLdif' ldif = either (error . show) id (parseLdifStr' [] ldif)
-
 -- | Parse LDIF content
 parseLdifStr :: FilePath -> T.Text -> Either ParseError LDIF
-parseLdifStr name xs = case parseLdifStr' name xs of
-    Left err -> Left err
-    Right ldif -> Right $ M.fromList ldif
-
-parseLdifStr' :: FilePath -> T.Text -> Either ParseError [Ldif]
-parseLdifStr' name xs = case eldif of
+parseLdifStr name xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
     where
@@ -51,14 +46,14 @@ parseLdifStr' name xs = case eldif of
         eldif = parse pLdif name input
 
 -- | Parsec ldif parser
-pLdif :: Parser [Ldif]
+pLdif :: Parser LDIF
 pLdif = do
     pSEPs
     void $ optionMaybe pVersionSpec
     recs <- sepEndBy pRec pSEPs1
     void $ optionMaybe pSearchResult
     eof
-    return recs
+    return $ foldl' l2L lempty recs
     where
         pVersionSpec = do
             void $ string "version:"
@@ -75,6 +70,10 @@ pLdif = do
             pFILL
             void pSafeString
             pSEPs
+        lempty = LDIF HM.empty HM.empty
+        l2L (LDIF r o) = \case
+            LdifRec (dn, x) -> LDIF (HM.insert dn x r) o
+            LdifOp  (dn, x) -> LDIF r (HM.insert dn x o)
 
 pRec :: Parser Ldif
 pRec = do
@@ -91,38 +90,41 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return (dn, r { rDn = dn })
+            return . LdifOp $ (dn, r { opDn = dn })
         pAttrValRec dn = do
             r <- pLdapEntry
-            return (dn, r { rDn = dn })
+            return . LdifRec $ (dn, r { rDn = dn })
 
 
 pLdapEntry :: Parser LDIFRecord
 pLdapEntry = do
     attrVals <- sepEndBy1 pAttrValSpec pSEP
-    return $ LDIFAdd T.empty (avToAttrs attrVals)
+    return $ LDIFRecord T.empty (avToAttrs attrVals)
 
-pChangeAdd :: Parser LDIFRecord
+pChangeAdd :: Parser LDIFOper
 pChangeAdd = do
     void $ string "add"
     pSEP
-    pLdapEntry
+    LDIFRecord dn a <- pLdapEntry
+    return  $ LDIFAdd dn a
 
-pChangeDel :: Parser LDIFRecord
+pChangeDel :: Parser LDIFOper
 pChangeDel = do
     void $ string "delete"
     pSEP
     void $ sepEndBy pAttrValSpec pSEP
     return $ LDIFDelete T.empty
 
-pChangeMod :: Parser LDIFRecord
+pChangeMod :: Parser LDIFOper
 pChangeMod = do
     void $ string "modify"
     pSEP
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
-    return . LDIFChange T.empty $ M.unions mods
+    return $ LDIFChange T.empty (unify mods)
+    where
+        unify x = LDIFAttrs $ HM.unions $ map toHM x
 
-pModSpec :: Parser (LdifAttrs (LDAPModOp, LdifValue))
+pModSpec :: Parser (LDIFAttrs (LDAPModOp, LdifValue))
 pModSpec = do
    modStr <- pModType
    pFILL
@@ -133,7 +135,7 @@ pModSpec = do
 
 mkMod :: T.Text
       -> [(LdifAttr, [LdifValue])]
-      -> LdifAttrs (LDAPModOp, LdifValue)
+      -> LDIFAttrs (LDAPModOp, LdifValue)
 mkMod modStr av
     | modStr == "add:" = toRec LdapModAdd
     | modStr == "delete:" = toRec LdapModDelete
@@ -142,11 +144,11 @@ mkMod modStr av
     where
         toRec op = avToAttrs $ map (second (zip (repeat op))) av
 
-avToAttrs :: (Eq a, Hashable a) => [(LdifAttr, [a])] -> LdifAttrs a
-avToAttrs av =
-    foldl' (\acc (a, s) -> M.insertWith S.union a s acc) M.empty avSets
+avToAttrs :: (Eq a, Hashable a) => [(LdifAttr, [a])] -> LDIFAttrs a
+avToAttrs av = LDIFAttrs $
+    foldl' (\acc (a, s) -> HM.insertWith HS.union a s acc) HM.empty avSets
     where
-        avSets = map (second S.fromList) av
+        avSets = map (second HS.fromList) av
 
 pDN :: Parser DN
 pDN = do

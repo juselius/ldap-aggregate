@@ -13,6 +13,8 @@ module LDIF.Types (
     , LDIFRecord(..)
     , LDIFOper(..)
     , LDIFAttrs(..)
+    , LDIFEntries
+    , LDIFMods
     , LDIFValues
     , LDIF(..)
     , DN
@@ -28,9 +30,11 @@ import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
-type DN = T.Text
-type LdifAttr = T.Text
-type LdifValue = T.Text
+type DN           = T.Text
+type LdifAttr     = T.Text
+type LdifValue    = T.Text
+type LDIFEntries  = HM.HashMap DN LDIFRecord
+type LDIFMods     = HM.HashMap DN LDIFOper
 type LDIFValues a = HS.HashSet a
 
 -- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFOper)

@@ -1,7 +1,6 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
-{-# LANGUAGE ViewPatterns #-}
 module LDIF.Diff (
       diffLDIF
 ) where
@@ -13,9 +12,9 @@ import qualified Data.HashSet as HS
 
 -- | Calculate Change LDIF between two LDIF contents.
 -- If there is not difference the empty change list is returned.
-diffLDIF :: LDIF -> LDIF -> LDIF
-diffLDIF (lRec -> l1) (lRec -> l2) =
-    LDIF HM.empty $ HM.unions [toAdd adds, toDelete deletes, changes]
+diffLDIF :: LDIFEntries -> LDIFEntries -> LDIFMods
+diffLDIF l1 l2 =
+    HM.unions [toAdd adds, toDelete deletes, changes]
     where
         adds = l2 `HM.difference` l1
         deletes = l1 `HM.difference` (l2 `HM.difference` adds)

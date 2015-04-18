@@ -1,6 +1,7 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
+{-# LANGUAGE ViewPatterns #-}
 module LDIF.Diff (
       diffLDIF
 ) where
@@ -13,40 +14,31 @@ import qualified Data.HashSet as HS
 -- | Calculate Change LDIF between two LDIF contents.
 -- If there is not difference the empty change list is returned.
 diffLDIF :: LDIF -> LDIF -> LDIF
-diffLDIF l1 l2 =
-    diffEntries l1' l2'
-    where
-        l1' = HM.filter isNotMod l1
-        l2' = HM.filter isNotMod l2
-        isNotMod (LDIFAdd _ _) = True
-        isNotMod _ = False
-
-diffEntries :: LDIF -> LDIF -> LDIF
-diffEntries l1 l2 =
-    HM.unions [adds, deletes, changes]
+diffLDIF (lRec -> l1) (lRec -> l2) =
+    LDIF HM.empty $ HM.unions [toAdd adds, toDelete deletes, changes]
     where
         adds = l2 `HM.difference` l1
-        deletes = mkDelete $ l1 `HM.difference` (l2 `HM.difference` adds)
+        deletes = l1 `HM.difference` (l2 `HM.difference` adds)
         changes = HM.mapWithKey (\k v ->
           diffRecords (fetch k l1') v) l2'
         l1' = (l1 `HM.difference` adds) `HM.difference` deletes
         l2' = (l2 `HM.difference` adds) `HM.difference` deletes
         fetch a b = fromJust $ HM.lookup a b
-        mkDelete = HM.map (\(LDIFAdd dn _) -> LDIFDelete dn)
+        toAdd    = HM.map (\(LDIFRecord dn x) -> LDIFAdd dn x)
+        toDelete = HM.map (\(LDIFRecord dn _) -> LDIFDelete dn)
 
-diffRecords :: LDIFRecord -> LDIFRecord -> LDIFRecord
-diffRecords (LDIFAdd dn r1) (LDIFAdd _ r2) =
-    LDIFChange dn $ HM.unions [adds, deletes, changes]
+diffRecords :: LDIFRecord -> LDIFRecord -> LDIFOper
+diffRecords (LDIFRecord dn (LDIFAttrs r1)) (LDIFRecord _ (LDIFAttrs r2)) =
+    LDIFChange dn $ LDIFAttrs $ HM.unions [adds, deletes, changes]
     where
         adds = setLdapOp LdapModAdd $ r2 `HM.difference` r1
         deletes = setLdapOp LdapModDelete $
             r1 `HM.difference` (r2 `HM.difference` adds)
         changes = HM.mapWithKey (\k v ->
-          diffValues (fetch k r1') v) r2'
+            diffValues (fetch k r1') v) r2'
         r1' = (r1 `HM.difference` adds) `HM.difference` deletes
         r2' = (r2 `HM.difference` adds) `HM.difference` deletes
         fetch a b = fromJust $ HM.lookup a b
-diffRecords _ _  = undefined
 
 diffValues :: HS.HashSet LdifValue
            -> HS.HashSet LdifValue
@@ -62,8 +54,8 @@ diffValues v1 v2 =
         -- deletes = v2 `HS.difference` (v2 `HS.difference` adds)
 
 setLdapOp :: LDAPModOp
-          -> LdifAttrs LdifValue
-          -> LdifAttrs (LDAPModOp, LdifValue)
+          -> HM.HashMap DN (HS.HashSet LdifValue)
+          -> HM.HashMap DN (HS.HashSet (LDAPModOp, LdifValue))
 setLdapOp op = HM.map (HS.map ((,) op))
 
 

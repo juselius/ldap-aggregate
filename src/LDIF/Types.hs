@@ -3,6 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -12,7 +13,7 @@ module LDIF.Types (
     , LDAPMod(..)
     , LDIFRecord(..)
     , LDIFOper(..)
-    , LDIFAttrs(..)
+    , LDIFAttrs
     , LDIFEntries
     , LDIFMods
     , LDIFValues
@@ -36,16 +37,13 @@ type LdifValue    = T.Text
 type LDIFEntries  = HM.HashMap DN LDIFRecord
 type LDIFMods     = HM.HashMap DN LDIFOper
 type LDIFValues a = HS.HashSet a
+type LDIFAttrs  a = HM.HashMap LdifAttr (LDIFValues a)
 
 -- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFOper)
 data LDIF = LDIF {
       lRec :: HM.HashMap DN LDIFRecord
     , lOp  :: HM.HashMap DN LDIFOper
     }
-
-newtype LDIFAttrs a = LDIFAttrs {
-    toHM :: HM.HashMap LdifAttr (LDIFValues a)
-    } deriving (Eq)
 
 -- This is an orphaned instance, but it's probably ok, hence the GHC
 -- suppression. See the answer by Lennart Augustsson:
@@ -76,10 +74,6 @@ instance Monoid LDIFRecord where
     mappend (LDIFRecord d a) (LDIFRecord d' a') =
         LDIFRecord (d `mappend` d') (a `mappend` a')
 
-instance Monoid (LDIFAttrs T.Text) where
-    mempty = LDIFAttrs mempty
-    mappend (LDIFAttrs a) (LDIFAttrs a') = LDIFAttrs (a `mappend` a')
-
 instance Show LDIF where
     show LDIF{..} = p lRec ++ p lOp
         where
@@ -99,7 +93,7 @@ instance Show LDIFOper where
             formatDn dn ++ "changetype: delete"
 
 instance Show (LDIFAttrs T.Text) where
-    show l = HM.foldlWithKey' showAttrs mempty $ toHM l
+    show = HM.foldlWithKey' showAttrs mempty
         where
             showAttrs acc k v = acc `mappend` genAttrStr k v
             genAttrStr k v = T.unpack . T.unlines . map (\x ->
@@ -107,7 +101,7 @@ instance Show (LDIFAttrs T.Text) where
                   HS.toList v
 
 instance Show (LDIFAttrs (LDAPModOp, T.Text)) where
-    show l = HM.foldlWithKey' showMod mempty $ toHM l
+    show = HM.foldlWithKey' showMod mempty
         where
             showMod acc k v = acc `mappend` genModStr k v
             genModStr k v = T.unpack . T.unlines . map (\(op, x) ->

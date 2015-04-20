@@ -120,9 +120,7 @@ pChangeMod = do
     void $ string "modify"
     pSEP
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
-    return $ LDIFChange T.empty (unify mods)
-    where
-        unify x = LDIFAttrs $ HM.unions $ map toHM x
+    return $ LDIFChange T.empty $ HM.unions mods
 
 pModSpec :: Parser (LDIFAttrs (LDAPModOp, LdifValue))
 pModSpec = do
@@ -145,7 +143,7 @@ mkMod modStr av
         toRec op = avToAttrs $ map (second (zip (repeat op))) av
 
 avToAttrs :: (Eq a, Hashable a) => [(LdifAttr, [a])] -> LDIFAttrs a
-avToAttrs av = LDIFAttrs $
+avToAttrs av =
     foldl' (\acc (a, s) -> HM.insertWith HS.union a s acc) HM.empty avSets
     where
         avSets = map (second HS.fromList) av

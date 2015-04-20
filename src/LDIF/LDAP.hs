@@ -19,17 +19,17 @@ ldapToLdif :: [LDAPEntry] -> LDIFEntries
 ldapToLdif x = HM.fromList $ map toll x
     where
         toll (LDAPEntry dn av) = let dn' = T.pack dn in
-            (dn', LDIFRecord dn' (LDIFAttrs . HM.fromList $ map toat av))
+            (dn', LDIFRecord dn' (HM.fromList $ map toat av))
         toat (a, v) = (T.pack a, HS.fromList (map T.pack v))
 
 recordToLdapAdd :: LDIFAttrs T.Text -> [LDAPMod]
-recordToLdapAdd la = map f $ HM.toList (toHM la)
+recordToLdapAdd la = map f $ HM.toList la
     where
         f (a, v) = LDAPMod LdapModAdd (T.unpack a) $ vl v
         vl v = map T.unpack (HS.toList v)
 
 recordToLdapMod :: LDIFAttrs (LDAPModOp, T.Text) -> [LDAPMod]
-recordToLdapMod lm = concatMap f $ HM.toList (toHM lm)
+recordToLdapMod lm = concatMap f $ HM.toList lm
     where
         f (a, v) = map (\(m, x) -> LDAPMod m (T.unpack a) x) $ vl v
         vl v = map (\(m, x) -> (m, [T.unpack x])) (HS.toList v)

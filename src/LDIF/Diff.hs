@@ -27,8 +27,8 @@ diffLDIF l1 l2 =
         toDelete = HM.map (\(LDIFRecord dn _) -> LDIFDelete dn)
 
 diffRecords :: LDIFRecord -> LDIFRecord -> LDIFOper
-diffRecords (LDIFRecord dn (LDIFAttrs r1)) (LDIFRecord _ (LDIFAttrs r2)) =
-    LDIFChange dn $ LDIFAttrs $ HM.unions [adds, deletes, changes]
+diffRecords (LDIFRecord dn r1) (LDIFRecord _ r2) =
+    LDIFChange dn $ HM.unions [adds, deletes, changes]
     where
         adds = setLdapOp LdapModAdd $ r2 `HM.difference` r1
         deletes = setLdapOp LdapModDelete $

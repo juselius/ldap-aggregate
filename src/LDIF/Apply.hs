@@ -46,7 +46,7 @@ modLdif ldif = \case
             case HM.lookup dn ldif of
                 Just r -> do
                     r'@(LDIFRecord _ a) <- chEntry r m
-                    return $ if HM.null (toHM a)
+                    return $ if HM.null a
                         then HM.delete dn ldif
                         else HM.insert dn r' ldif
                 Nothing -> throwNotExists dn
@@ -58,7 +58,7 @@ modLdif ldif = \case
 chEntry :: LDIFRecord
            -> LDIFAttrs (LDAPModOp, T.Text)
            -> ApplyError LDIFRecord
-chEntry le (LDIFAttrs m) =
+chEntry le ( m) =
     return $ HM.foldlWithKey' chAttr le m
 
 chAttr :: LDIFRecord
@@ -67,11 +67,11 @@ chAttr :: LDIFRecord
           -> LDIFRecord
 chAttr (LDIFRecord dn l) k m =
     LDIFRecord dn $
-        LDIFAttrs $
+        -- LDIFAttrs $
             HM.filter (not . HS.null) $
             HM.insert k (HS.foldl' applyOp av m) ldif
     where
-        ldif = toHM l
+        ldif =  l
         av = fromMaybe HS.empty $ HM.lookup k ldif
         applyOp acc (op, v) =
             case op of

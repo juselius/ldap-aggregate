@@ -18,6 +18,7 @@ import Data.Monoid
 import Data.List
 import Text.Regex
 import Text.Regex.TDFA
+import LDIF
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
@@ -85,6 +86,8 @@ instance Editable (HS.HashSet T.Text) where
                         else HS.insert v' acc
                 | otherwise = HS.insert v acc
 
+instance Editable LDIFRecord where
+    edit e (LDIFRecord dn r) = LDIFRecord dn $ edit e r
 
 instance Editor (Rule T.Text) where
     type T = T.Text

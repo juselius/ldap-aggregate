@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
-data Ldif = LdifRec (DN, LDIFRecord) | LdifOp (DN, LDIFMod)
+data Ldif = LdifRec (DN, LDIFRecord) | LdifMod (DN, LDIFMod)
 
 parseLdif :: T.Text -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
@@ -73,7 +73,7 @@ pLdif = do
         lempty = LDIF HM.empty HM.empty
         l2L (LDIF r o) = \case
             LdifRec (dn, x) -> LDIF (HM.insert dn x r) o
-            LdifOp  (dn, x) -> LDIF r (HM.insert dn x o)
+            LdifMod  (dn, x) -> LDIF r (HM.insert dn x o)
 
 pRec :: Parser Ldif
 pRec = do
@@ -90,7 +90,7 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return . LdifOp $ (dn, r { modDn = dn })
+            return . LdifMod $ (dn, r { modDn = dn })
         pAttrValRec dn = do
             r <- pLdapEntry
             return . LdifRec $ (dn, r { rDn = dn })

@@ -39,10 +39,9 @@ type LDIFMods     = HM.HashMap DN LDIFMod
 type LDIFValues a = HS.HashSet a
 type LDIFAttrs  a = HM.HashMap Attr (LDIFValues a)
 
--- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFMod)
 data LDIF = LDIF {
       lRec :: HM.HashMap DN LDIFRecord
-    , lOp  :: HM.HashMap DN LDIFMod
+    , lMod :: HM.HashMap DN LDIFMod
     } deriving (Eq)
 
 -- This is an orphaned instance, but it's probably ok, hence the GHC
@@ -75,7 +74,7 @@ instance Monoid LDIFRecord where
         LDIFRecord (d `mappend` d') (a `mappend` a')
 
 instance Show LDIF where
-    show LDIF{..} = p lRec ++ p lOp
+    show LDIF{..} = p lRec ++ p lMod
         where
             p x = unwords . map show $ HM.elems x
 

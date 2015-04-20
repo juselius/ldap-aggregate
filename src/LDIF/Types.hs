@@ -55,7 +55,7 @@ instance Hashable LDAPModOp where
 data LDIFRecord = LDIFRecord  {
       rDn :: DN
     , rAttrs :: LDIFAttrs T.Text
-    }
+    } deriving (Eq)
 
 data LDIFOper
     = LDIFAdd {

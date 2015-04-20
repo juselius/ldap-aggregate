@@ -43,7 +43,7 @@ type LDIFAttrs  a = HM.HashMap LdifAttr (LDIFValues a)
 data LDIF = LDIF {
       lRec :: HM.HashMap DN LDIFRecord
     , lOp  :: HM.HashMap DN LDIFOper
-    }
+    } deriving (Eq)
 
 -- This is an orphaned instance, but it's probably ok, hence the GHC
 -- suppression. See the answer by Lennart Augustsson:

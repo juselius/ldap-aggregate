@@ -23,14 +23,14 @@ genLdif' dn av = "dn: " `T.append` dn `T.append` "\n" `T.append` attrs
             "\n") "" (expanded av)
         expanded = concatMap (uncurry zip . first repeat)
 
-genLdif :: DN -> AttrList -> LDIF
+genLdif :: DN -> AttrList -> LDIFEntries
 genLdif dn av = HM.singleton dn $ makeLdifEntry dn av
 
 makeLdifEntry :: DN -> [(LdifAttr, [LdifValue])]-> LDIFRecord
 makeLdifEntry dn av =
-    LDIFAdd dn (HM.fromList $ map (second HS.fromList) av)
+    LDIFRecord dn (HM.fromList $ map (second HS.fromList) av)
 
-makeLdifChange :: DN -> LDAPModOp -> LdifAttr -> [LdifValue]-> LDIFRecord
+makeLdifChange :: DN -> LDAPModOp -> LdifAttr -> [LdifValue]-> LDIFOper
 makeLdifChange dn op a v =
     LDIFChange dn (HM.singleton a (HS.fromList (zip (repeat op) v)))
 

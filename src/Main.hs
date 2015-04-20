@@ -53,13 +53,13 @@ main = do
         updateDIT ldap sTree tTree
     putStrLn "done."
 
-runDIT :: DIT -> IO LDIF
+runDIT :: DIT -> IO LDIFEntries
 runDIT dit = getLdif dit >>= applyEntryFilters (genEntryFilters dit)
 
-updateDIT :: LDAP -> LDIF -> LDIF -> IO ()
+updateDIT :: LDAP -> LDIFEntries -> LDIFEntries -> IO ()
 updateDIT ldap s t = commitLdif ldap $ diffLDIF t s
 
-getLdif :: DIT -> IO [LDIF]
+getLdif :: DIT -> IO [LDIFEntries]
 getLdif dit@DIT{..} = do
     l <- bindLdap dit
     getSubTree l (T.unpack basedn) >>= mapM ldapEntryToLDIF

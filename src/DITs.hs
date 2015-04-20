@@ -92,7 +92,7 @@ askBindPw = do
     putStrLn ""
     return pw
 
-commitLdap :: LDAP -> LDIF -> IO ()
+commitLdap :: LDAP -> LDIFMods -> IO ()
 commitLdap ldap ldif =
     mapM_ runMod $ HM.toList ldif
     where
@@ -104,5 +104,5 @@ commitLdap ldap ldif =
 printSubTree :: LDAP -> String -> IO ()
 printSubTree ldap tree = do
     ldif <- getSubTree ldap tree
-    putStrLn . T.unpack . showLdif $ ldapToLdif ldif
+    print $ ldapToLdif ldif
 

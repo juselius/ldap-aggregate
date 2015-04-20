@@ -33,7 +33,7 @@ sources:
           - attr: a --> x
           - dn: uid=b
             attr: d
-            value: (d[0]) --> \10d
+            value: (d0).* --> \1 0d
       # insert:
       #     - dn: cn=Marve Fleksnes,ou=users,dc=target
       #       attr: mail

@@ -3,6 +3,7 @@ import Test.Tasty
 import LdifTests
 import EditTests
 import DITTests
+import AggregateTests
 
 main :: IO ()
 main = defaultMain tests
@@ -12,4 +13,5 @@ tests = testGroup "Tests" [
       ldifTests
     , editTests
     , ditTests
+    , aggTests
     ]

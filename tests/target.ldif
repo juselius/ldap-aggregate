@@ -8,6 +8,6 @@ dn: uid=b,ou=tou,dc=target
 x: a
 b: b
 c: c0
-d: d00d
+d: d0 0d
 d: d1
 

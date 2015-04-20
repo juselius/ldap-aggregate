@@ -6,14 +6,13 @@ module AggregateTests (
 
 import Test.Tasty
 import Test.Tasty.HUnit
-import Data.List
 import LDIF
 import Editor
 import Config
 import DITs
 import qualified Data.Text as T
 
--- import Debug.Trace
+import Debug.Trace
 
 aggTests :: TestTree
 aggTests =
@@ -26,9 +25,10 @@ testAgg = do
     c <- readConfig "tests/test.yml"
     s <- toLdif $ readFile "tests/source.ldif"
     t <- toLdif $ readFile "tests/target.ldif"
-    let ign = map doIgnore $ ignoreFilters . head $ sourceDIT c
-        rw  = rewriteFilters . head $ sourceDIT c
+    let ign = map doIgnore  $ ignoreFilters  . head $ sourceDIT c
+        rw  = map doRewrite $ rewriteFilters . head $ sourceDIT c
     runEdits rw (runEdits ign s) @?= t
+    s @?= t
     where
-        toLdif = fmap $ parseLdif . T.pack
+        toLdif = fmap $ lRec . parseLdif . T.pack
 

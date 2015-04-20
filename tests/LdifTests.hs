@@ -42,14 +42,17 @@ ldapUtilsTest = testGroup "LDAP tests" [
     ]
 
 ldifParserIdempotent1 :: LdifStr -> Bool
-ldifParserIdempotent1 (LdifStr s) = srt s == srt l
+ldifParserIdempotent1 (LdifStr s) =
+    srt s == srt l
     where
         l = T.pack . show $ parseLdif s
         srt = T.unlines . sort . T.lines
 
 ldifParserIdempotent2 :: LdifStr -> Bool
-ldifParserIdempotent2 (LdifStr s) = s == l
-    where l = T.pack . show . lRec $ parseLdif s
+ldifParserIdempotent2 (LdifStr s) =
+    parseLdif s == parseLdif l
+    where
+        l = T.pack . show $ parseLdif s
 
 ldifDiffIsDiff :: (LdifEntryStr, LdifEntryStr) -> Bool
 ldifDiffIsDiff (LdifEntryStr s1, LdifEntryStr s2) =

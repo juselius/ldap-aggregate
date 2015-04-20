@@ -12,7 +12,7 @@ module LDIF.Types (
     , LDAPEntry(..)
     , LDAPMod(..)
     , LDIFRecord(..)
-    , LDIFOper(..)
+    , LDIFMod(..)
     , LDIFAttrs
     , LDIFEntries
     , LDIFMods
@@ -35,14 +35,14 @@ type DN           = T.Text
 type Attr         = T.Text
 type Value        = T.Text
 type LDIFEntries  = HM.HashMap DN LDIFRecord
-type LDIFMods     = HM.HashMap DN LDIFOper
+type LDIFMods     = HM.HashMap DN LDIFMod
 type LDIFValues a = HS.HashSet a
 type LDIFAttrs  a = HM.HashMap Attr (LDIFValues a)
 
--- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFOper)
+-- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFMod)
 data LDIF = LDIF {
       lRec :: HM.HashMap DN LDIFRecord
-    , lOp  :: HM.HashMap DN LDIFOper
+    , lOp  :: HM.HashMap DN LDIFMod
     } deriving (Eq)
 
 -- This is an orphaned instance, but it's probably ok, hence the GHC
@@ -57,16 +57,16 @@ data LDIFRecord = LDIFRecord  {
     , rAttrs :: LDIFAttrs T.Text
     } deriving (Eq)
 
-data LDIFOper
+data LDIFMod
     = LDIFAdd {
-          opDn :: DN
-        , opAttrs :: LDIFAttrs T.Text
+          modDn :: DN
+        , modAttrs :: LDIFAttrs T.Text
         }
     | LDIFChange {
-          opDn :: DN
-        , opMods :: LDIFAttrs (LDAPModOp, T.Text)
+          modDn :: DN
+        , modMods :: LDIFAttrs (LDAPModOp, T.Text)
         }
-    | LDIFDelete { opDn :: DN }
+    | LDIFDelete { modDn :: DN }
     deriving (Eq)
 
 instance Monoid LDIFRecord where
@@ -83,7 +83,7 @@ instance Show LDIFRecord where
     show (LDIFRecord dn av) =
         formatDn dn ++ "\n" ++ show av
 
-instance Show LDIFOper where
+instance Show LDIFMod where
     show = \case
         LDIFAdd dn av ->
             formatDn dn ++ "changetype: add\n" ++ show av

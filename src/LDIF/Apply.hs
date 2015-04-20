@@ -19,7 +19,7 @@ applyLdif :: LDIFEntries -> LDIFMods -> Either String LDIFEntries
 applyLdif ldif mods =
     runIdentity . runErrorT $ applyMods (HM.elems mods) ldif
 
-applyMods :: [LDIFOper] -> LDIFEntries -> ApplyError LDIFEntries
+applyMods :: [LDIFMod] -> LDIFEntries -> ApplyError LDIFEntries
 applyMods mods ldif =
     runAdd ldif >>= runDel >>= runMod
     where
@@ -28,7 +28,7 @@ applyMods mods ldif =
         runDel = runOp modLdif isDel
         runOp op p l = foldM op l $ filter p mods
 
-modLdif :: LDIFEntries -> LDIFOper -> ApplyError LDIFEntries
+modLdif :: LDIFEntries -> LDIFMod -> ApplyError LDIFEntries
 modLdif ldif = \case
     LDIFAdd dn a  -> tryAdd dn a
     LDIFDelete dn -> tryDel dn
@@ -80,15 +80,15 @@ chAttr (LDIFRecord dn l) k m =
                 LdapModReplace -> HS.insert v acc
                 _ -> acc
 
-isAdd :: LDIFOper -> Bool
+isAdd :: LDIFMod -> Bool
 isAdd (LDIFAdd _ _) = True
 isAdd _ = False
 
-isMod :: LDIFOper -> Bool
+isMod :: LDIFMod -> Bool
 isMod (LDIFChange _ _) = True
 isMod _ = False
 
-isDel :: LDIFOper -> Bool
+isDel :: LDIFMod -> Bool
 isDel (LDIFDelete _) = True
 isDel _ = False
 

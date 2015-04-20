@@ -26,7 +26,7 @@ diffLDIF l1 l2 =
         toAdd    = HM.map (\(LDIFRecord dn x) -> LDIFAdd dn x)
         toDelete = HM.map (\(LDIFRecord dn _) -> LDIFDelete dn)
 
-diffRecords :: LDIFRecord -> LDIFRecord -> LDIFOper
+diffRecords :: LDIFRecord -> LDIFRecord -> LDIFMod
 diffRecords (LDIFRecord dn r1) (LDIFRecord _ r2) =
     LDIFChange dn $ HM.unions [adds, deletes, changes]
     where

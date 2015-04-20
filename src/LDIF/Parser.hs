@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
-data Ldif = LdifRec (DN, LDIFRecord) | LdifOp (DN, LDIFOper)
+data Ldif = LdifRec (DN, LDIFRecord) | LdifOp (DN, LDIFMod)
 
 parseLdif :: T.Text -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
@@ -90,7 +90,7 @@ pRec = do
             r <- try pChangeAdd
                 <|> try pChangeDel
                 <|> try pChangeMod
-            return . LdifOp $ (dn, r { opDn = dn })
+            return . LdifOp $ (dn, r { modDn = dn })
         pAttrValRec dn = do
             r <- pLdapEntry
             return . LdifRec $ (dn, r { rDn = dn })
@@ -101,21 +101,21 @@ pLdapEntry = do
     attrVals <- sepEndBy1 pAttrValSpec pSEP
     return $ LDIFRecord T.empty (avToAttrs attrVals)
 
-pChangeAdd :: Parser LDIFOper
+pChangeAdd :: Parser LDIFMod
 pChangeAdd = do
     void $ string "add"
     pSEP
     LDIFRecord dn a <- pLdapEntry
     return  $ LDIFAdd dn a
 
-pChangeDel :: Parser LDIFOper
+pChangeDel :: Parser LDIFMod
 pChangeDel = do
     void $ string "delete"
     pSEP
     void $ sepEndBy pAttrValSpec pSEP
     return $ LDIFDelete T.empty
 
-pChangeMod :: Parser LDIFOper
+pChangeMod :: Parser LDIFMod
 pChangeMod = do
     void $ string "modify"
     pSEP

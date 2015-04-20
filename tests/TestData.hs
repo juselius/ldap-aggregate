@@ -30,7 +30,7 @@ makeLdifEntry :: DN -> [(Attr, [Value])]-> LDIFRecord
 makeLdifEntry dn av =
     LDIFRecord dn (HM.fromList $ map (second HS.fromList) av)
 
-makeLdifChange :: DN -> LDAPModOp -> Attr -> [Value]-> LDIFOper
+makeLdifChange :: DN -> LDAPModOp -> Attr -> [Value]-> LDIFMod
 makeLdifChange dn op a v =
     LDIFChange dn (HM.singleton a (HS.fromList (zip (repeat op) v)))
 

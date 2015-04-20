@@ -122,7 +122,7 @@ pChangeMod = do
     mods <- sepEndBy1 pModSpec (char '-' >> pSEP)
     return $ LDIFChange T.empty $ HM.unions mods
 
-pModSpec :: Parser (LDIFAttrs (LDAPModOp, LdifValue))
+pModSpec :: Parser (LDIFAttrs (LDAPModOp, Value))
 pModSpec = do
    modStr <- pModType
    pFILL
@@ -132,8 +132,8 @@ pModSpec = do
    return $ mkMod modStr attrs
 
 mkMod :: T.Text
-      -> [(LdifAttr, [LdifValue])]
-      -> LDIFAttrs (LDAPModOp, LdifValue)
+      -> [(Attr, [Value])]
+      -> LDIFAttrs (LDAPModOp, Value)
 mkMod modStr av
     | modStr == "add:" = toRec LdapModAdd
     | modStr == "delete:" = toRec LdapModDelete
@@ -142,7 +142,7 @@ mkMod modStr av
     where
         toRec op = avToAttrs $ map (second (zip (repeat op))) av
 
-avToAttrs :: (Eq a, Hashable a) => [(LdifAttr, [a])] -> LDIFAttrs a
+avToAttrs :: (Eq a, Hashable a) => [(Attr, [a])] -> LDIFAttrs a
 avToAttrs av =
     foldl' (\acc (a, s) -> HM.insertWith HS.union a s acc) HM.empty avSets
     where
@@ -159,7 +159,7 @@ pModType = fmap T.pack $
        <|> try (string "delete:")
        <|> string "replace:"
 
-pAttrType :: Parser LdifAttr
+pAttrType :: Parser Attr
 pAttrType = do
     pFILL
     c <- noneOf "-\n"
@@ -168,7 +168,7 @@ pAttrType = do
     let ys = c:xs
     return $ T.pack ys
 
-pAttrValSpec :: Parser (LdifAttr, [LdifValue])
+pAttrValSpec :: Parser (Attr, [Value])
 pAttrValSpec = do
     name <- pAttrType
     pFILL

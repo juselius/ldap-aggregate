@@ -19,8 +19,8 @@ module LDIF.Types (
     , LDIFValues
     , LDIF(..)
     , DN
-    , LdifAttr
-    , LdifValue
+    , Attr
+    , Value
 ) where
 
 import LDAP.Search (LDAPEntry(..))
@@ -32,12 +32,12 @@ import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
 type DN           = T.Text
-type LdifAttr     = T.Text
-type LdifValue    = T.Text
+type Attr         = T.Text
+type Value        = T.Text
 type LDIFEntries  = HM.HashMap DN LDIFRecord
 type LDIFMods     = HM.HashMap DN LDIFOper
 type LDIFValues a = HS.HashSet a
-type LDIFAttrs  a = HM.HashMap LdifAttr (LDIFValues a)
+type LDIFAttrs  a = HM.HashMap Attr (LDIFValues a)
 
 -- data LDIF = LRec (HM.HashMap DN LDIFRecord) | LOp (HM.HashMap DN LDIFOper)
 data LDIF = LDIF {

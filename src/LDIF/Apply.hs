@@ -62,8 +62,8 @@ chEntry le ( m) =
     return $ HM.foldlWithKey' chAttr le m
 
 chAttr :: LDIFRecord
-          -> LdifAttr
-          -> HS.HashSet (LDAPModOp, LdifValue)
+          -> Attr
+          -> HS.HashSet (LDAPModOp, Value)
           -> LDIFRecord
 chAttr (LDIFRecord dn l) k m =
     LDIFRecord dn $

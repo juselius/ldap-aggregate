@@ -26,11 +26,11 @@ genLdif' dn av = "dn: " `T.append` dn `T.append` "\n" `T.append` attrs
 genLdif :: DN -> AttrList -> LDIFEntries
 genLdif dn av = HM.singleton dn $ makeLdifEntry dn av
 
-makeLdifEntry :: DN -> [(LdifAttr, [LdifValue])]-> LDIFRecord
+makeLdifEntry :: DN -> [(Attr, [Value])]-> LDIFRecord
 makeLdifEntry dn av =
     LDIFRecord dn (HM.fromList $ map (second HS.fromList) av)
 
-makeLdifChange :: DN -> LDAPModOp -> LdifAttr -> [LdifValue]-> LDIFOper
+makeLdifChange :: DN -> LDAPModOp -> Attr -> [Value]-> LDIFOper
 makeLdifChange dn op a v =
     LDIFChange dn (HM.singleton a (HS.fromList (zip (repeat op) v)))
 

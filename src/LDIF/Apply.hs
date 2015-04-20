@@ -2,6 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 module LDIF.Apply (applyLdif) where
 
 import LDIF.Types
@@ -12,59 +13,65 @@ import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
--- import Debug.Trace
-
 type ApplyError = ErrorT String Identity
 
-applyLdif :: LDIF -> LDIF -> Either String LDIF
-applyLdif mods ldif =
-    runIdentity . runErrorT $
-        applyLdif' (HM.toList mods) ldif
+applyLdif :: LDIFEntries -> LDIFMods -> Either String LDIFEntries
+applyLdif ldif mods =
+    runIdentity . runErrorT $ applyMods (HM.elems mods) ldif
 
-applyLdif' :: [Ldif] -> LDIF -> ApplyError LDIF
-applyLdif' mods ldif =
+applyMods :: [LDIFOper] -> LDIFEntries -> ApplyError LDIFEntries
+applyMods mods ldif =
     runAdd ldif >>= runDel >>= runMod
     where
-        runAdd = runOp addLdif isAdd
+        runAdd = runOp modLdif isAdd
         runMod = runOp modLdif isMod
-        runDel = runOp delLdif isDel
+        runDel = runOp modLdif isDel
         runOp op p l = foldM op l $ filter p mods
 
-addLdif :: LDIF -> Ldif -> ApplyError LDIF
-addLdif ldif (dn, a) =
-    if isNothing $ HM.lookup dn ldif
-        then return $ HM.insert dn a ldif
-        else throwError $ "Entry already exists, dn: " ++ T.unpack dn
+modLdif :: LDIFEntries -> LDIFOper -> ApplyError LDIFEntries
+modLdif ldif = \case
+    LDIFAdd dn a  -> tryAdd dn a
+    LDIFDelete dn -> tryDel dn
+    LDIFChange dn m -> tryChange dn m
+    where
+        tryAdd dn a =
+            if isNothing $ HM.lookup dn ldif
+                then return $ HM.insert dn (LDIFRecord dn a) ldif
+                else throwExists dn
+        tryDel dn =
+            if isJust $ HM.lookup dn ldif
+                then return $ HM.delete dn ldif
+                else throwNotExists dn
+        tryChange dn m =
+            case HM.lookup dn ldif of
+                Just r -> do
+                    r'@(LDIFRecord _ a) <- chEntry r m
+                    return $ if HM.null (toHM a)
+                        then HM.delete dn ldif
+                        else HM.insert dn r' ldif
+                Nothing -> throwNotExists dn
+        throwExists    dn = throwError $
+            "Entry already exists, dn: " ++ T.unpack dn
+        throwNotExists dn = throwError $
+            "Entry does not exists, dn: " ++ T.unpack dn
 
-delLdif :: LDIF -> Ldif -> ApplyError LDIF
-delLdif ldif (dn, _) =
-    if isJust $ HM.lookup dn ldif
-        then return $ HM.delete dn ldif
-        else throwError $ "Entry does not exists, dn: " ++ T.unpack dn
+chEntry :: LDIFRecord
+           -> LDIFAttrs (LDAPModOp, T.Text)
+           -> ApplyError LDIFRecord
+chEntry le (LDIFAttrs m) =
+    return $ HM.foldlWithKey' chAttr le m
 
-modLdif :: LDIF -> Ldif -> ApplyError LDIF
-modLdif ldif (dn, m) =
-    case HM.lookup dn ldif of
-        Just e -> do
-            e' <- applyEntry e m
-            return $ if HM.null (rAttrs e')
-                then HM.delete dn ldif
-                else HM.insert dn e' ldif
-        Nothing -> throwError $ "Entry does not exists! " ++ T.unpack dn
-
-applyEntry :: LDIFRecord -> LDIFRecord -> ApplyError LDIFRecord
-applyEntry le (LDIFChange _ m) = return $ HM.foldlWithKey' applyAttr le m
-applyEntry _ _ = throwError "Invalid apply!"
-
-applyAttr :: LDIFRecord
+chAttr :: LDIFRecord
           -> LdifAttr
           -> HS.HashSet (LDAPModOp, LdifValue)
           -> LDIFRecord
-applyAttr (LDIFAdd dn ldif) k m =
-    LDIFAdd dn $
-        HM.filter (not . HS.null) $
-        HM.insert k (HS.foldl' applyOp av m) ldif
+chAttr (LDIFRecord dn l) k m =
+    LDIFRecord dn $
+        LDIFAttrs $
+            HM.filter (not . HS.null) $
+            HM.insert k (HS.foldl' applyOp av m) ldif
     where
+        ldif = toHM l
         av = fromMaybe HS.empty $ HM.lookup k ldif
         applyOp acc (op, v) =
             case op of
@@ -72,17 +79,16 @@ applyAttr (LDIFAdd dn ldif) k m =
                 LdapModDelete -> HS.delete v acc
                 LdapModReplace -> HS.insert v acc
                 _ -> acc
-applyAttr ldif _ _ = ldif
 
-isAdd :: Ldif -> Bool
-isAdd (_, LDIFAdd _ _) = True
+isAdd :: LDIFOper -> Bool
+isAdd (LDIFAdd _ _) = True
 isAdd _ = False
 
-isMod :: Ldif -> Bool
-isMod (_, LDIFChange _ _) = True
+isMod :: LDIFOper -> Bool
+isMod (LDIFChange _ _) = True
 isMod _ = False
 
-isDel :: Ldif -> Bool
-isDel (_, LDIFDelete _) = True
+isDel :: LDIFOper -> Bool
+isDel (LDIFDelete _) = True
 isDel _ = False
 

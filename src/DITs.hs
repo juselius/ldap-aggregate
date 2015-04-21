@@ -10,10 +10,13 @@ module DITs (
     , getSubTree
     , askBindPw
     , commitLdap
+    , applyLdifRules
+    , getLdifRules
     , LDAPEntry(..)
     , LDAPMod(..)
     , DIT(..)
     , SearchBase(..)
+    , LDIFRules(..)
     ) where
 
 import System.IO
@@ -42,6 +45,12 @@ data SearchBase = SearchBase {
     , searchFilter :: T.Text
     } deriving (Show, Eq, Ord)
 
+data LDIFRules = LDIFRules {
+      rewriteRules :: [Rule T.Text]
+    , ignoreRules  :: [Rule T.Text]
+    , insertRules  :: [Rule T.Text]
+    }
+
 instance FromJSON DIT where
     parseJSON (Object o) = fmap addAttrRewriteDn $ DIT
         <$> o .: "uri"
@@ -53,6 +62,28 @@ instance FromJSON DIT where
         <*> o .:? "rewrite" .!= mempty
     parseJSON _ = mzero
 
+instance FromJSON SearchBase where
+    parseJSON (Object o) = SearchBase
+        <$> o .: "basedn"
+        <*> o .:? "filter" .!= mempty
+    parseJSON _ = mzero
+
+getLdifRules :: DIT -> LDIFRules
+getLdifRules DIT{..} = LDIFRules rw ign ins
+    where
+        rw  = map doRewrite rewriteFilters
+        ign = map doIgnore  ignoreFilters
+        ins = []
+
+applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
+applyLdifRules LDIFRules{..} =
+      reconcile
+    . runEdits insertRules
+    . runEdits rewriteRules
+    . runEdits ignoreRules
+    where
+        reconcile = HM.foldl' (\acc v -> HM.insert (rDn v) v acc) mempty
+
 -- for every dn rewrite, add the corresponding rewrite to attr dn
 addAttrRewriteDn :: DIT -> DIT
 addAttrRewriteDn d@DIT{..} =
@@ -61,12 +92,6 @@ addAttrRewriteDn d@DIT{..} =
         df acc r@(RewriteRule (Subst f t _)) =
             RewriteRule (Cont ".*" (Subst f t Done)):r:acc
         df acc r = r:acc
-
-instance FromJSON SearchBase where
-    parseJSON (Object o) = SearchBase
-        <$> o .: "basedn"
-        <*> o .:? "filter" .!= mempty
-    parseJSON _ = mzero
 
 bindLdap :: DIT -> IO LDAP
 bindLdap DIT{..} = do

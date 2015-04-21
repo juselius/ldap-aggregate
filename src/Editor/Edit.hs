@@ -23,6 +23,9 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
+runEdits :: (Editor e, Editable v) => [e] -> v -> v
+runEdits e v = foldl' (flip edit) v e
+
 class (Monoid t, Eq t) => Editable t where
     edit :: (Editor a, Editable t) => a -> t -> t
 
@@ -40,9 +43,6 @@ data Rule a =
     | Cont   { pat :: a, next :: Rule a }
     | Done
     deriving (Show, Eq, Ord)
-
-runEdits :: (Editor e, Editable v) => [e] -> v -> v
-runEdits e v = foldl' (flip edit) v e
 
 instance Monoid (Rule a) where
     mempty = Done
@@ -87,7 +87,15 @@ instance Editable (HS.HashSet T.Text) where
                 | otherwise = HS.insert v acc
 
 instance Editable LDIFRecord where
-    edit e (LDIFRecord dn r) = LDIFRecord dn $ edit e r
+    edit e (LDIFRecord dn r) = LDIFRecord dn' r'
+        where
+            r'  = edit e r
+            dn' | matchP e dn
+                , x <- applyR e dn =
+                    if x == mempty
+                        then dn
+                        else x
+                | otherwise = dn
 
 instance Editor (Rule T.Text) where
     type T = T.Text

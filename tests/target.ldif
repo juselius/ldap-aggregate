@@ -1,4 +1,4 @@
-dn: uid=a,ou=tou,dc=target
+dn: uid=x,ou=tou,dc=target
 x: a
 b: b
 c: c0

@@ -80,7 +80,7 @@ instance Show LDIF where
 
 instance Show LDIFRecord where
     show (LDIFRecord dn av) =
-        formatDn dn ++ "\n" ++ show av
+        formatDn dn ++ show av
 
 instance Show LDIFMod where
     show = \case

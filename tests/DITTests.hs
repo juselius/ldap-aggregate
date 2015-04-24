@@ -42,7 +42,7 @@ tDIT = DIT {
     , binddn = "cn=admin,dc=target"
     , passwd = "secret"
     , searchBases    = [
-          SearchBase "dc=target" ""
+          SearchBase "dc=target" "*"
         ]
     , ignoreFilters  = [
         IgnoreRule $

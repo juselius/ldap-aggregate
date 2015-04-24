@@ -1,3 +1,5 @@
+updateInterval: 30
+
 target:
     uri: ldaps://localhost:389
     base: dc=target

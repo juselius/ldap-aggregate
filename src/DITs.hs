@@ -7,6 +7,7 @@
 module DITs (
       bindDIT
     , modifyDIT
+    , fetchTree
     , fetchSubTree
     , applyLdifRules
     , getLdifRules
@@ -61,7 +62,7 @@ instance FromJSON DIT where
 instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase
         <$> o .: "basedn"
-        <*> o .:? "filter" .!= mempty
+        <*> o .:? "filter" .!= "*"
     parseJSON _ = mzero
 
 bindDIT :: DIT -> IO LDAP
@@ -83,16 +84,19 @@ modifyDIT ldap ldif =
             LDIFChange _ (recordToLdapMod -> e) -> ldapModify ldap dn e
             LDIFDelete _                        -> ldapDelete ldap dn
 
-fetchSubTree :: LDAP -> T.Text -> IO [LDAPEntry]
-fetchSubTree ldap (T.unpack -> tree) =
-    ldapSearch ldap
-        (Just tree)
-        LdapScopeSubtree
-        Nothing
-        LDAPAllUserAttrs
-        False
+fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
+fetchTree ldap sbs =
+    foldM  (\a b -> fmap (a ++) (fetchSubTree ldap b)) [] sbs
 
-printSubTree :: LDAP -> T.Text -> IO ()
+fetchSubTree :: LDAP -> SearchBase -> IO [LDAPEntry]
+fetchSubTree ldap SearchBase{..} =
+    ldapSearch ldap (Just base) LdapScopeSubtree
+        (Just filt) LDAPAllUserAttrs False
+        where
+            base = T.unpack searchBase
+            filt = T.unpack searchFilter
+
+printSubTree :: LDAP -> SearchBase -> IO ()
 printSubTree ldap tree = do
     ldif <- fetchSubTree ldap tree
     print $ ldapToLdif ldif

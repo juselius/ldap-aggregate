@@ -8,22 +8,26 @@ module Main where
 
 import Paths_ldap_aggregate
 import System.Console.CmdArgs
+import System.Locale
 import Control.Monad
+import Control.Concurrent (threadDelay)
 import LDAP
 import LDIF
 import Config
 import DITs
 import Editor
 import Data.Version
+import Data.Time.Clock
+import Data.Time.Format
 import qualified Data.Text as T
 
 data CmdLine = CmdLine {
-      inpfile :: FilePath
+      config :: FilePath
     } deriving (Data, Typeable, Show, Eq)
 
 cmdln :: CmdLine
 cmdln = CmdLine {
-    inpfile = def
+    config = def
         &= opt ("ldap-aggregate.yml" :: FilePath)
         &= argPos 0
         &= typFile
@@ -42,31 +46,77 @@ cmdln = CmdLine {
         , ""
         ]
 
+data World = World {
+      tConn  :: LDAP
+    , tDit   :: DIT
+    , tRules :: LDIFRules
+    , sConns :: [LDAP]
+    , sDits  :: [DIT]
+    , sRules :: [LDIFRules]
+    }
+
 main :: IO ()
 main = do
-    a <- cmdArgs cmdln
-    config <- readConfig (inpfile a)
-    ldap <- bindLdap $ targetDIT config
-    tTree <- runDIT $ targetDIT config
-    forM_ (sourceDIT config) $ \s -> do
-        sTree <- runDIT s
-        updateDIT ldap sTree tTree
-    putStrLn "done."
+    a   <- cmdArgs cmdln
+    cfg <- readConfig (config a)
 
-runDIT :: DIT -> IO LDIFEntries
-runDIT dit = getLdif dit >>= applyEntryFilters (genEntryFilters dit)
+    let
+        tDit   = targetDIT cfg
+        tRules = getLdifRules tDit
+        sDits  = sourceDIT cfg
+        sRules = map getLdifRules sDits
+    tConn   <- bindDIT tDit
+    sConns  <- mapM bindDIT sDits
+
+    let world = World tConn tDit tRules sConns sDits sRules
+
+    runUpdates "*" world
+
+    void $ forever $ do
+        ts <- getCurrentTimeStamp
+        runUpdates ts world
+        threadDelay $ 10000 * updateInterval cfg
+
+    putStrLn "done." -- never reached
+
+runUpdates :: T.Text -> World -> IO ()
+runUpdates ts World{..} = do
+    tTree   <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
+    sTrees  <- liftM (zipWith applyLdifRules sRules) $
+        zipWithM fetchLdif sConns sDits'
+    mapM_ (modifyDIT tConn) (diffTrees tTree sTrees)
+    where
+        tDit'  = addts tDit
+        sDits' = map addts sDits
+        addts d@DIT{..} =
+            d { searchBases = map (addModifyTimestamp ts) searchBases }
+
+
+diffTrees :: LDIFEntries -> [LDIFEntries] -> [LDIFMods]
+diffTrees t = map (diffLDIF t)
 
 updateDIT :: LDAP -> LDIFEntries -> LDIFEntries -> IO ()
-updateDIT ldap s t = commitLdif ldap $ diffLDIF t s
+updateDIT ldap s t = modifyDIT ldap $ diffLDIF t s
 
-getLdif :: DIT -> IO [LDIFEntries]
-getLdif dit@DIT{..} = do
-    l <- bindLdap dit
-    getSubTree l (T.unpack basedn) >>= mapM ldapEntryToLDIF
+fetchLdif :: LDAP -> DIT -> IO LDIFEntries
+fetchLdif l DIT{..} = do
+    stree <- fetchTree l searchBases
+    return $ ldapToLdif stree
 
-genEntryFilters = undefined
-applyEntryFilters = undefined
-commitLdif = undefined
-ldapEntryToLDIF = undefined
-bindDIT = undefined
-getDIT = undefined
+addModifyTimestamp :: T.Text -> SearchBase -> SearchBase
+addModifyTimestamp ts b@SearchBase{..} = b {
+        searchFilter = addTSFilter
+        }
+    where
+        addTSFilter =
+            "(&(modifyTimestamp>=" `T.append` ts `T.append` ")"
+            `T.append` sf `T.append` ")"
+        sf =
+            if T.head searchFilter == '('
+                then searchFilter
+                else "(" `T.append` searchFilter `T.append` ")"
+
+getCurrentTimeStamp :: IO T.Text
+getCurrentTimeStamp = fmap tsfmt $ getCurrentTime
+    where
+        tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"

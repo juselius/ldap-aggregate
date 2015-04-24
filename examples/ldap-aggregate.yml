@@ -2,7 +2,6 @@ updateInterval: 30
 
 target:
     uri: ldaps://localhost:389
-    base: dc=target
     binddn: cn=admin,dc=target
     password: secret
     search:
@@ -23,7 +22,6 @@ target:
 sources:
     - uri: ldaps://localhost:389
       binddn: cn=admin,dc=source
-      base: dc=source
       password: secret
       auditlog: ./examples/auditlog.ldif
       search:

@@ -41,7 +41,6 @@ tDIT = DIT {
       uri = "target"
     , binddn = "cn=admin,dc=target"
     , passwd = "secret"
-    , basedn = "dc=target"
     , searchBases    = [
           SearchBase "dc=target" ""
         ]
@@ -59,7 +58,6 @@ sDIT0 = DIT {
       uri = "source"
     , binddn = "cn=admin,dc=source"
     , passwd = "secret"
-    , basedn = "dc=source"
     , searchBases    = [
           SearchBase "dc=source" "*"
         ]

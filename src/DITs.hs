@@ -32,7 +32,6 @@ data DIT = DIT {
       uri :: T.Text
     , binddn :: T.Text
     , passwd :: T.Text
-    , basedn :: T.Text
     , searchBases    :: [SearchBase]
     , ignoreFilters  :: [IgnoreRule]
     , rewriteFilters :: [RewriteRule]
@@ -54,7 +53,6 @@ instance FromJSON DIT where
         <$> o .: "uri"
         <*> o .: "binddn"
         <*> o .: "password"
-        <*> o .: "base"
         <*> o .: "search"
         <*> o .:? "ignore" .!= mempty
         <*> o .:? "rewrite" .!= mempty

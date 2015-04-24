@@ -70,7 +70,7 @@ main = do
 
     let world = World tConn tDit tRules sConns sDits sRules
 
-    runUpdates "*" world
+    runUpdates genesis world
 
     void $ forever $ do
         ts <- getCurrentTimeStamp
@@ -78,6 +78,10 @@ main = do
         threadDelay $ 10000 * updateInterval cfg
 
     putStrLn "done." -- never reached
+
+
+genesis :: T.Text
+genesis = "*"
 
 runUpdates :: T.Text -> World -> IO ()
 runUpdates ts World{..} = do

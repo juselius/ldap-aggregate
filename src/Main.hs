@@ -15,7 +15,6 @@ import LDAP
 import LDIF
 import Config
 import DITs
-import Editor
 import Data.Version
 import Data.Time.Clock
 import Data.Time.Format

@@ -22,7 +22,7 @@ ditTests =
 testParse :: Assertion
 testParse = do
     c <- readConfig "tests/dit.yml"
-    (sortConf c) @?= (sortConf $ Config tDIT [sDIT0])
+    (sortConf c) @?= (sortConf $ Config 60 tDIT [sDIT0])
 
 sortConf :: Config -> Config
 sortConf c@Config{..} = c {

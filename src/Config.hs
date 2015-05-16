@@ -18,8 +18,8 @@ import DITs
 
 data Config = Config {
       updateInterval :: Int
-    , targetDIT :: DIT
-    , sourceDIT :: [DIT]
+    , targetDIT  :: DIT
+    , sourceDITs :: [DIT]
     } deriving (Show, Eq)
 
 instance FromJSON Config where

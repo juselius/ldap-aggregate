@@ -62,7 +62,7 @@ main = do
     let
         tDit   = targetDIT cfg
         tRules = getLdifRules tDit
-        sDits  = sourceDIT cfg
+        sDits  = sourceDITs cfg
         sRules = map getLdifRules sDits
     tConn   <- bindDIT tDit
     sConns  <- mapM bindDIT sDits

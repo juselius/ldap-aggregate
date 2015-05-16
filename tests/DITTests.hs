@@ -27,7 +27,7 @@ testParse = do
 sortConf :: Config -> Config
 sortConf c@Config{..} = c {
             targetDIT = srtDIT targetDIT
-          , sourceDIT = map srtDIT sourceDIT
+          , sourceDITs = map srtDIT sourceDITs
           }
     where
         srtDIT d@DIT{..} = d {

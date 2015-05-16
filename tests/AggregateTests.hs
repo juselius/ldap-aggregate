@@ -22,7 +22,7 @@ testAgg = do
     c <- readConfig "tests/test.yml"
     s <- toLdif $ readFile "tests/source.ldif"
     t <- toLdif $ readFile "tests/target.ldif"
-    let r = getLdifRules . head $ sourceDIT c
+    let r = getLdifRules . head $ sourceDITs c
     applyLdifRules r s @?= t
     where
         toLdif = fmap $ lRec . parseLdif . T.pack

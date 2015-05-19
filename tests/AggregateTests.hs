@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 module AggregateTests (
     aggTests
 ) where
@@ -14,7 +13,7 @@ import qualified Data.Text as T
 aggTests :: TestTree
 aggTests =
     testGroup "Aggreagate DITs" [
-      testCase "aggregate" $ testAgg
+      testCase "aggregate" testAgg
       ]
 
 testAgg :: Assertion

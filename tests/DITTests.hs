@@ -16,13 +16,13 @@ import DITs
 ditTests :: TestTree
 ditTests =
     testGroup "YML DIT" [
-      testCase "parse config " $ testParse
+      testCase "parse config " testParse
       ]
 
 testParse :: Assertion
 testParse = do
     c <- readConfig "tests/dit.yml"
-    (sortConf c) @?= (sortConf $ Config 60 tDIT [sDIT0])
+    sortConf c @?= sortConf (Config 60 tDIT [sDIT0])
 
 sortConf :: Config -> Config
 sortConf c@Config{..} = c {

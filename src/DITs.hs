@@ -89,11 +89,11 @@ modifyDIT ldap ldif =
             LDIFDelete _                        -> ldapDelete ldap dn
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
-fetchTree ldap sbs =
-    foldM  (\a b -> fmap (a ++) (fetchSubTree ldap b)) [] sbs
+fetchTree ldap =
+    foldM  (\a b -> fmap (a ++) (fetchSubTree ldap b)) []
 
 fetchSubTree :: LDAP -> SearchBase -> IO [LDAPEntry]
-fetchSubTree ldap SearchBase{..} =
+fetchSubTree ldap SearchBase{..} = print filt >>
     ldapSearch ldap (Just base) LdapScopeSubtree
         (Just filt) LDAPAllUserAttrs False
         where

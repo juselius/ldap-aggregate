@@ -10,7 +10,6 @@ module Config (
     , readConfig
 ) where
 
-import Data.Maybe
 import Data.Yaml
 import Control.Applicative
 import Control.Monad
@@ -30,5 +29,5 @@ instance FromJSON Config where
     parseJSON _ = mzero
 
 readConfig :: FilePath -> IO Config
-readConfig f = liftM fromJust $ decodeFile f
+readConfig f = liftM (either (error . show) id) $ decodeFileEither f
 

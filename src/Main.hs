@@ -10,6 +10,7 @@ import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import System.Locale
 import Control.Monad
+import Control.Applicative
 import Control.Concurrent (threadDelay)
 import LDAP
 import LDIF
@@ -33,12 +34,11 @@ cmdln = CmdLine {
     }
     &= verbosity
     &= help "Edit, filter and rewrite LDAP trees."
-    &= summary ("Version "
+    &= summary ("ldap-aggregate v. "
         ++ showVersion version
-        ++ ", (c) Jonas Juselius 2015"
         )
     &= details [
-          "LDAP aggregate"
+          "ldap-aggregate, (c) Jonas Juselius, UiT, 2015"
         , ""
         , "Edit, filter and rewrite LDIF from one or more source DITs"
         , "onto a target DIT."
@@ -74,13 +74,13 @@ main = do
     void $ forever $ do
         ts <- getCurrentTimeStamp
         runUpdates ts world
-        threadDelay $ 10000 * updateInterval cfg
+        threadDelay $ 1000000 * updateInterval cfg
 
     putStrLn "done." -- never reached
 
 
 genesis :: T.Text
-genesis = "*"
+genesis = "0Z"
 
 runUpdates :: T.Text -> World -> IO ()
 runUpdates ts World{..} = do
@@ -120,6 +120,6 @@ addModifyTimestamp ts b@SearchBase{..} = b {
                 else "(" `T.append` searchFilter `T.append` ")"
 
 getCurrentTimeStamp :: IO T.Text
-getCurrentTimeStamp = fmap tsfmt $ getCurrentTime
+getCurrentTimeStamp = tsfmt <$> getCurrentTime
     where
         tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"

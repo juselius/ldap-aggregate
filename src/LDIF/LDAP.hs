@@ -4,8 +4,11 @@
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 module LDIF.LDAP (
       ldapToLdif
+    , ldifToMod
     , recordToLdapAdd
     , recordToLdapMod
 ) where
@@ -21,6 +24,12 @@ ldapToLdif x = HM.fromList $ map toll x
         toll (LDAPEntry dn av) = let dn' = T.pack dn in
             (dn', LDIFRecord dn' (HM.fromList $ map toat av))
         toat (a, v) = (T.pack a, HS.fromList (map T.pack v))
+
+ldifToMod :: LDIF -> LDIF
+ldifToMod l@LDIF{..} = l {lMod = HM.foldlWithKey' rec2add lMod lRec}
+    where
+        rec2add acc k (toAdd -> v) = HM.insert k v acc
+        toAdd (LDIFRecord dn attrs) = LDIFAdd dn attrs
 
 recordToLdapAdd :: LDIFAttrs T.Text -> [LDAPMod]
 recordToLdapAdd la = map f $ HM.toList la

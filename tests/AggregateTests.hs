@@ -19,9 +19,9 @@ aggTests =
 
 testAgg :: Assertion
 testAgg = do
-    c <- readConfig "tests/test.yml"
-    s <- toLdif $ readFile "tests/source.ldif"
-    t <- toLdif $ readFile "tests/target.ldif"
+    c <- readConfig "tests/fromto.yml"
+    s <- toLdif $ readFile "tests/ldif/from.ldif"
+    t <- toLdif $ readFile "tests/ldif/to.ldif"
     let r = getLdifRules . head $ sourceDITs c
     applyLdifRules r s @?= t
     where

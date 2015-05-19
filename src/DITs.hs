@@ -20,6 +20,7 @@ module DITs (
     ) where
 
 import Data.Yaml
+import Data.Function
 import Data.Monoid
 import Control.Applicative
 import Control.Monad
@@ -28,6 +29,7 @@ import LDIF
 import Editor
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
+import qualified Data.List as L
 
 data DIT = DIT {
       uri :: T.Text
@@ -77,8 +79,10 @@ bindDIT DIT{..} = do
 
 modifyDIT :: LDAP -> LDIFMods -> IO ()
 modifyDIT ldap ldif =
-    mapM_ runMod $ HM.toList ldif
+    mapM_ runMod ldif'
     where
+        ldif' = L.sortBy (orf `on` fst) $ HM.toList ldif
+        orf a b =  T.length a `compare` T.length b
         runMod (T.unpack -> dn, entry) = case entry of
             LDIFAdd    _ (recordToLdapAdd -> e) -> ldapAdd ldap dn e
             LDIFChange _ (recordToLdapMod -> e) -> ldapModify ldap dn e

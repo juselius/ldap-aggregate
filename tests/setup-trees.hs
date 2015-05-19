@@ -3,9 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import System.IO
 import System.Environment
 import TestUtils
 import DITs
+import LDAP
+import LDIF
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 main :: IO ()
 main = do
@@ -29,4 +34,18 @@ main = do
                 "secret" [] [] []
             populateTarget ldap
             printSubTree ldap $ SearchBase "dc=target" "objectClass=*"
+
+populateSource :: LDAP -> IO ()
+populateSource ldap = do
+    ltree <- withFile "./ldif/source.tree.ldif" ReadMode T.hGetContents
+    lpops <- withFile "./ldif/source.populate.ldif" ReadMode T.hGetContents
+    commitLdap ldap ltree
+    commitLdap ldap lpops
+
+populateTarget :: LDAP -> IO ()
+populateTarget ldap = do
+    ltree <- withFile "./ldif/target.tree.ldif" ReadMode T.hGetContents
+    lpops <- withFile "./ldif/target.populate.ldif" ReadMode T.hGetContents
+    commitLdap ldap ltree
+    commitLdap ldap lpops
 

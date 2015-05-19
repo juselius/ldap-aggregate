@@ -8,17 +8,13 @@ module TestUtils (
       clearSubTree
     , clearTree'
     , commitLdap
-    , populateSource
-    , populateTarget
 ) where
 
-import System.IO
 import Text.Regex.TDFA
 import LDAP
 import DITs
 import LDIF
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
 ldifStrToLdapAdd :: T.Text -> LDIF
@@ -31,7 +27,6 @@ clearTree' tree = do
         "ldap://localhost:389"
         ("cn=admin," `T.append` tree')
         "secret" [] [] []
-    printSubTree ldap sb
     clearSubTree ldap sb
     printSubTree ldap sb
     where
@@ -48,20 +43,6 @@ clearSubTree ldap tree = do
             | ledn e =~ ("^dc=(source|target)$" :: String) :: Bool = False
             | ledn e =~ ("^cn=admin,dc=[^=]*$" :: String) :: Bool = False
             | otherwise = True
-
-populateSource :: LDAP -> IO ()
-populateSource ldap = do
-    ltree <- withFile "./ldif/source.tree.ldif" ReadMode T.hGetContents
-    lpops <- withFile "./ldif/source.populate.ldif" ReadMode T.hGetContents
-    commitLdap ldap ltree
-    commitLdap ldap lpops
-
-populateTarget :: LDAP -> IO ()
-populateTarget ldap = do
-    ltree <- withFile "./ldif/target.tree.ldif" ReadMode T.hGetContents
-    lpops <- withFile "./ldif/target.populate.ldif" ReadMode T.hGetContents
-    commitLdap ldap ltree
-    -- commitLdap ldap lpops
 
 commitLdap :: LDAP -> T.Text -> IO()
 commitLdap ldap x = modifyDIT ldap mods

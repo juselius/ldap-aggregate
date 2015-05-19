@@ -62,7 +62,7 @@ instance FromJSON DIT where
 instance FromJSON SearchBase where
     parseJSON (Object o) = SearchBase
         <$> o .: "basedn"
-        <*> o .:? "filter" .!= "*"
+        <*> o .:? "filter" .!= "objectClass=*"
     parseJSON _ = mzero
 
 bindDIT :: DIT -> IO LDAP

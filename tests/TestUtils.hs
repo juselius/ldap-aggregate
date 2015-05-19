@@ -1,16 +1,15 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
--- {-# LANGUAGE OverloadedStrings #-}
--- {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-missing-signatures #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-missing-signatures #-}
 
 module TestUtils (
-      clearTree
+      clearSubTree
     , clearTree'
+    , commitLdap
     , populateSource
     , populateTarget
-    , bindDIT
-    , printDIT
 ) where
 
 import System.IO
@@ -18,31 +17,30 @@ import Text.Regex.TDFA
 import LDAP
 import DITs
 import LDIF
-import Editor
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
-ldifStrToLdapAdd :: T.Text -> [(String, [LDAPMod])]
+ldifStrToLdapAdd :: T.Text -> LDIF
 ldifStrToLdapAdd str =
-        map toMod ldif
-    where
-        ldif = extractEntries $ parseLdifStr "" str
-        extractEntries = either (error . show) id
-        toMod (dn, LDIFAdd x) = (dn, x)
-        toMod (dn, _) = (dn, [])
+    either (error . show) id $ parseLdifStr "" str
 
-
-clearTree' :: String -> IO ()
+clearTree' :: T.Text -> IO ()
 clearTree' tree = do
-    ldap <- bindLdap "ldap://localhost:389" ("cn=admin," ++ tree) "secret"
-    printSubTree ldap tree
-    clearTree ldap tree
-    printSubTree ldap tree
+    ldap <- bindDIT $ DIT
+        "ldap://localhost:389"
+        ("cn=admin," `T.append` tree')
+        "secret" [] [] []
+    printSubTree ldap sb
+    clearSubTree ldap sb
+    printSubTree ldap sb
+    where
+        tree' = "dc=" `T.append` tree
+        sb = SearchBase tree' "objectClass=*"
 
-clearTree :: LDAP -> String -> IO ()
-clearTree ldap tree = do
-    ldif <- getSubTree ldap tree
+clearSubTree :: LDAP -> SearchBase -> IO ()
+clearSubTree ldap tree = do
+    ldif <- fetchSubTree ldap tree
     let ldif' = reverse $ filter delEntry ldif
     mapM_ (ldapDelete ldap . ledn) ldif'
     where
@@ -55,41 +53,18 @@ populateSource :: LDAP -> IO ()
 populateSource ldap = do
     ltree <- withFile "./ldif/source.tree.ldif" ReadMode T.hGetContents
     lpops <- withFile "./ldif/source.populate.ldif" ReadMode T.hGetContents
-    commit ldap ltree
-    commit ldap lpops
+    commitLdap ldap ltree
+    commitLdap ldap lpops
 
 populateTarget :: LDAP -> IO ()
 populateTarget ldap = do
     ltree <- withFile "./ldif/target.tree.ldif" ReadMode T.hGetContents
     lpops <- withFile "./ldif/target.populate.ldif" ReadMode T.hGetContents
-    commit ldap ltree
-    commit ldap lpops
+    commitLdap ldap ltree
+    -- commitLdap ldap lpops
 
-commit :: LDAP -> String -> IO()
-commit ldap x = mapM_ (uncurry (ldapAdd ldap)) (ldifStrToLdapAdd x)
+commitLdap :: LDAP -> T.Text -> IO()
+commitLdap ldap x = modifyDIT ldap mods
+    where
+         mods = lMod . ldifToMod . ldifStrToLdapAdd $ x
 
---
--- Test data
---
-
-testDN = "uid=foobar,ou=groups,dc=source"
-
-testRelocPatterns = [
-      ("dc=source", "dc=target")
-    , ("dc=foo", "dc=bar")
-    ]
-
-testLDIF = LDIFEntry $ LDAPEntry "dc=hello,dc=world" [
-      ("uid", ["foo"])
-    , ("member", ["foo", "bar"])
-    , ("description", ["foobar"])
-    ]
-
-testRewriteAttrs = [
-      ("uid", ("oo", "aa"))
-    , ("member", ("foo", "oof"))
-    ]
-
-testIgnore = [
-    ("uid=foo", ["description"])
-    ]

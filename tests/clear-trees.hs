@@ -1,5 +1,6 @@
 -- | Test ldap conection
 
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import System.Environment
@@ -13,6 +14,6 @@ main = do
         ["target"] -> doT
         _ -> doS >> doT
     where
-        doS = clearTree' "dc=source"
-        doT = clearTree' "dc=target"
+        doS = clearTree' "source"
+        doT = clearTree' "target"
 

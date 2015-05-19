@@ -1,9 +1,11 @@
 -- | Test ldap conection
 
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import System.Environment
 import TestUtils
+import DITs
 
 main :: IO ()
 main = do
@@ -14,13 +16,17 @@ main = do
         _ -> doS >> doT
     where
         doS = do
-            ldap <- bindDIT "ldap://localhost:389"
-                "cn=admin,dc=source" "secret"
+            ldap <- bindDIT $ DIT
+                "ldap://localhost:389"
+                "cn=admin,dc=source"
+                "secret" [] [] []
             populateSource ldap
-            printDIT ldap "dc=source"
+            printSubTree ldap $ SearchBase "dc=source" "objectClass=*"
         doT = do
-            ldap <- bindDIT "ldap://localhost:389"
-                "cn=admin,dc=target" "secret"
+            ldap <- bindDIT $ DIT
+                "ldap://localhost:389"
+                "cn=admin,dc=target"
+                "secret" [] [] []
             populateTarget ldap
-            printDIT ldap "dc=target"
+            printSubTree ldap $ SearchBase "dc=target" "objectClass=*"
 

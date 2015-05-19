@@ -15,7 +15,7 @@ sources:
       password: secret
       search:
           - basedn: dc=source
-            filter: '*'
+            filter: 'objectClass=*'
       ignore:
           - dn: ou=users,dc=source
           - attr: mail

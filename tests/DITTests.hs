@@ -42,7 +42,7 @@ tDIT = DIT {
     , binddn = "cn=admin,dc=target"
     , passwd = "secret"
     , searchBases    = [
-          SearchBase "dc=target" "*"
+          SearchBase "dc=target" "objectClass=*"
         ]
     , ignoreFilters  = [
         IgnoreRule $
@@ -59,7 +59,7 @@ sDIT0 = DIT {
     , binddn = "cn=admin,dc=source"
     , passwd = "secret"
     , searchBases    = [
-          SearchBase "dc=source" "*"
+          SearchBase "dc=source" "objectClass=*"
         ]
     , ignoreFilters  = [
           IgnoreRule $ Delete "ou=users,dc=source" Done

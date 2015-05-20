@@ -78,22 +78,29 @@ bindDIT DIT{..} = do
         passwd' = T.unpack passwd
 
 modifyDIT :: LDAP -> LDIFMods -> IO ()
-modifyDIT ldap ldif =
-    mapM_ runMod ldif'
+modifyDIT ldap ldif = do
+    mapM_ runMod lDel
+    mapM_ runMod lOther
     where
         ldif' = L.sortBy (orf `on` fst) $ HM.toList ldif
+        (L.reverse -> lDel, lOther) = L.partition (pf . snd) ldif'
         orf a b =  T.length a `compare` T.length b
         runMod (T.unpack -> dn, entry) = case entry of
-            LDIFAdd    _ (recordToLdapAdd -> e) -> ldapAdd ldap dn e
-            LDIFChange _ (recordToLdapMod -> e) -> ldapModify ldap dn e
-            LDIFDelete _                        -> ldapDelete ldap dn
+            LDIFAdd    _ (recordToLdapAdd -> e) ->
+                print ("add:" ++ dn) >> ldapAdd ldap dn e
+            LDIFChange _ (recordToLdapMod -> e) ->
+                print ("change:" ++ dn) >> ldapModify ldap dn e
+            LDIFDelete _                        ->
+                print ("delete:" ++ dn) >> ldapDelete ldap dn
+        pf (LDIFDelete _) = True
+        pf _ = False
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
 fetchTree ldap =
     foldM  (\a b -> fmap (a ++) (fetchSubTree ldap b)) []
 
 fetchSubTree :: LDAP -> SearchBase -> IO [LDAPEntry]
-fetchSubTree ldap SearchBase{..} = print filt >>
+fetchSubTree ldap SearchBase{..} =
     ldapSearch ldap (Just base) LdapScopeSubtree
         (Just filt) LDAPAllUserAttrs False
         where

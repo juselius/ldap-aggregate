@@ -5,7 +5,7 @@
 --  * exceptions
 --  * error msgs
 --  * verbosity
---  * deletes (auditlog?)
+--  * deletes
 --  * automatic container filtering
 --  * parallelize
 {-# LANGUAGE OverloadedStrings #-}
@@ -55,24 +55,24 @@ cmdln = CmdLine {
         ]
 
 data World = World {
-      wConf  :: Config
-    , tConn  :: LDAP
-    , tDit   :: DIT
-    , tRules :: LDIFRules
-    , sConns :: [LDAP]
-    , sDits  :: [DIT]
-    , sRules :: [LDIFRules]
-    , sTree  :: LDIFEntries
-    , tTree  :: LDIFEntries
-    , tStamp :: T.Text
-    , sStamp :: T.Text
+      tConn      :: LDAP
+      , tDit     :: DIT
+      , tRules   :: LDIFRules
+      , tTree    :: LDIFEntries
+      , tStamp   :: T.Text
+      , sConns   :: [LDAP]
+      , sDits    :: [DIT]
+      , sRules   :: [LDIFRules]
+      , sTree    :: LDIFEntries
+      , sTreeRef :: LDIFEntries
+      , sStamp   :: T.Text
     }
 
 main :: IO ()
-main = EKG.forkServer "localhost" 8000 >> do
+main = do
+    void $ EKG.forkServer "localhost" 8000
     a   <- cmdArgs cmdln
     cfg <- readConfig (config a)
-
     let
         tDit   = targetDIT cfg
         tRules = getLdifRules tDit
@@ -81,56 +81,65 @@ main = EKG.forkServer "localhost" 8000 >> do
     tConn   <- bindDIT tDit
     sConns  <- mapM bindDIT sDits
 
-    let world = World cfg tConn tDit tRules sConns sDits sRules HM.empty HM.empty epoch epoch
+    let world = World
+            tConn tDit tRules HM.empty epoch
+            sConns sDits sRules HM.empty HM.empty epoch
+        update' = update $ updateInterval cfg
 
-    w <- runUpdates world
-    threadDelay $ 1000000 * updateInterval (wConf w)
-    loop w
+    w <- update' world
+    loop update' w
 
     putStrLn "done." -- never reached
 
-loop :: World -> IO ()
-loop w@World{..} = do
-    w' <- runUpdates w
-    threadDelay $ 1000000 * updateInterval wConf
-    ts <- getCurrentTimeStamp
-    loop w' { tStamp = ts }
+loop :: (World -> IO World) -> World -> IO ()
+loop f w = loop f w
 
-epoch :: T.Text
-epoch = "19700101000000Z"
+update :: Int -> World -> IO World
+update delay world = do
+    sts <- getCurrentTimeStamp
+    w <- runUpdates world
+    threadDelay $ 1000000 * delay
+    tts <- getCurrentTimeStamp
+    return w { tStamp = tts
+             , sStamp = sts
+             }
 
 runUpdates :: World -> IO World
-runUpdates w@World{..} = do
-    ts <- getCurrentTimeStamp
-    t <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
-    s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
-            zipWithM fetchLdif sConns sDits'
-    let sTree' = HM.union s sTree
-        tTree' = HM.union t tTree
-        delta = diffLDIF tTree' sTree'
-        dTree = either (error . show) id $ applyLdif tTree' delta
+runUpdates world = do
+    w@World{..} <- updateTargetTree world >>= updateSourceTrees
+    let delta = diffLDIF tTree sTree
+        dTree = either (error . show) id $ applyLdif tTree delta
     -- putStrLn $ "runUpdates: " ++ show delta ++ "\n--\n"
     modifyDIT tConn delta
     -- putStrLn "@@@"
-    return w { sTree = sTree'
-             , tTree = dTree
-             , sStamp = ts
-             -- , tStamp = tts
+    return w { tTree = dTree }
+
+addTS :: T.Text -> DIT -> DIT
+addTS ts d@DIT{..} =
+    d { searchBases = map (addModifyTimestamp ts) searchBases }
+
+updateTargetTree :: World -> IO World
+updateTargetTree w@World{..} = do
+    t <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
+    return w { tTree = HM.union t tTree }
+    where
+        tDit'  = addTS tStamp tDit
+
+updateSourceTrees :: World -> IO World
+updateSourceTrees w@World{..} = do
+    s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
+            zipWithM fetchLdif sConns sDits'
+    return w { sTreeRef = sTree
+             , sTree = HM.union s sTree
              }
     where
-        tDit'  = addts tStamp tDit
-        sDits' = map (addts sStamp) sDits
-        addts ts d@DIT{..} =
-            d { searchBases = map (addModifyTimestamp ts) searchBases }
-
-updateDIT :: LDAP -> LDIFEntries -> LDIFEntries -> IO ()
-updateDIT ldap s t = modifyDIT ldap $ diffLDIF t s
+        sDits' = map (addTS sStamp) sDits
 
 fetchLdif :: LDAP -> DIT -> IO LDIFEntries
 fetchLdif l DIT{..} = do
     tree <- fetchTree l searchBases
-    -- unless (null tree) . putStrLn $
-    --     "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
+    unless (null tree) . putStrLn $
+        "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
     return $ ldapToLdif tree
 
 addModifyTimestamp :: T.Text -> SearchBase -> SearchBase
@@ -150,3 +159,7 @@ getCurrentTimeStamp :: IO T.Text
 getCurrentTimeStamp = tsfmt <$> getCurrentTime
     where
         tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"
+
+epoch :: T.Text
+epoch = "19700101000000Z"
+

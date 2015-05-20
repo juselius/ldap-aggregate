@@ -1,0 +1,39 @@
+updateInterval: 5
+
+target:
+    uri: ldap://localhost
+    binddn: cn=admin,dc=target
+    password: secret
+    search:
+        - basedn: ou=users,dc=target
+        - basedn: ou=groups,dc=target
+        - basedn: cn=acme,ou=members,dc=target
+    ignore:
+        - dn: ^ou=users,dc=target$
+        - dn: ^ou=groups,dc=target$
+        - dn: ^ou=import,ou=users,dc=target$
+        - dn: ^ou=import,ou=groups,dc=target$
+        - dn: ^ou=source,ou=users,dc=target$
+        - dn: ^ou=source,ou=groups,dc=target$
+        - dn: ^cn=acme,ou=members,dc=target$
+        - dn: uid=roger,ou=users,dc=target
+        - dn: cn=roger,ou=groups,dc=target
+        - attr: entryUUID
+
+sources:
+    - uri: ldap://localhost
+      binddn: cn=admin,dc=source
+      password: secret
+      search:
+          - basedn: ou=users,dc=source
+          - basedn: ou=groups,dc=source
+          - basedn: ou=vip,ou=members,dc=source
+            filter: 'member=*'
+      ignore:
+          - dn: ^ou=users,dc=source$
+          - dn: ^ou=groups,dc=source$
+          - dn: ^cn=user,ou=members,dc=source$
+      rewrite:
+          - dn: ou=users,dc=source --> ou=source,ou=users,dc=target
+          - dn: ou=groups,dc=source --> ou=source,ou=groups,dc=target
+

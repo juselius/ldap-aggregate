@@ -87,13 +87,16 @@ modifyDIT ldap ldif = do
         orf a b =  T.length a `compare` T.length b
         runMod (T.unpack -> dn, entry) = case entry of
             LDIFAdd    _ (recordToLdapAdd -> e) ->
-                print ("add:" ++ dn) >> ldapAdd ldap dn e
+                info e
+                >> ldapAdd ldap dn e
             LDIFChange _ (recordToLdapMod -> e) ->
-                print ("change:" ++ dn) >> ldapModify ldap dn e
+                unless (null e) (info e)
+                >> ldapModify ldap dn e
             LDIFDelete _                        ->
-                print ("delete:" ++ dn) >> ldapDelete ldap dn
+                putStrLn ("delete: " ++ dn) >> ldapDelete ldap dn
         pf (LDIFDelete _) = True
         pf _ = False
+        info e = mapM_ (\x -> putStrLn (show x)) e >> putStrLn "--"
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
 fetchTree ldap =

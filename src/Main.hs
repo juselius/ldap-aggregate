@@ -1,6 +1,12 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
+-- TODO:
+--  * exceptions
+--  * error msgs
+--  * verbosity
+--  * deletes (auditlog?)
+--  * automatic container filtering
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -20,6 +26,7 @@ import Data.Version
 import Data.Time.Clock
 import Data.Time.Format
 import qualified Data.Text as T
+import qualified Data.HashMap.Lazy as HM
 
 data CmdLine = CmdLine {
       config :: FilePath
@@ -52,6 +59,8 @@ data World = World {
     , sConns :: [LDAP]
     , sDits  :: [DIT]
     , sRules :: [LDIFRules]
+    , sTree  :: LDIFEntries
+    , tTree  :: LDIFEntries
     }
 
 main :: IO ()
@@ -67,27 +76,35 @@ main = do
     tConn   <- bindDIT tDit
     sConns  <- mapM bindDIT sDits
 
-    let world = World tConn tDit tRules sConns sDits sRules
+    let world = World tConn tDit tRules sConns sDits sRules HM.empty HM.empty
 
-    runUpdates genesis world
-
-    void $ forever $ do
-        ts <- getCurrentTimeStamp
-        runUpdates ts world
-        threadDelay $ 1000000 * updateInterval cfg
+    w <- runUpdates epoch world
+    loop cfg w
 
     putStrLn "done." -- never reached
 
+loop :: Config -> World -> IO ()
+loop cfg w = do
+    ts <- getCurrentTimeStamp
+    threadDelay $ 1000000 * updateInterval cfg
+    w' <- runUpdates ts w
+    loop cfg w'
 
-genesis :: T.Text
-genesis = "0Z"
 
-runUpdates :: T.Text -> World -> IO ()
-runUpdates ts World{..} = do
-    tTree   <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
-    sTrees  <- liftM (zipWith applyLdifRules sRules) $
+epoch :: T.Text
+epoch = "19700101000000Z"
+
+runUpdates :: T.Text -> World -> IO World
+runUpdates ts w@World{..} = do
+    t <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
+    s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
         zipWithM fetchLdif sConns sDits'
-    mapM_ (modifyDIT tConn) (diffTrees tTree sTrees)
+    let sTree' = HM.union sTree s
+        tTree' = HM.union tTree t
+    modifyDIT tConn $ diffLDIF tTree' sTree'
+    return w { sTree = sTree'
+             , tTree = tTree'
+             }
     where
         tDit'  = addts tDit
         sDits' = map addts sDits
@@ -96,7 +113,7 @@ runUpdates ts World{..} = do
 
 
 diffTrees :: LDIFEntries -> [LDIFEntries] -> [LDIFMods]
-diffTrees t = map (diffLDIF t)
+diffTrees s t = map (\x -> diffLDIF s x) t
 
 updateDIT :: LDAP -> LDIFEntries -> LDIFEntries -> IO ()
 updateDIT ldap s t = modifyDIT ldap $ diffLDIF t s
@@ -104,6 +121,9 @@ updateDIT ldap s t = modifyDIT ldap $ diffLDIF t s
 fetchLdif :: LDAP -> DIT -> IO LDIFEntries
 fetchLdif l DIT{..} = do
     stree <- fetchTree l searchBases
+    -- print "@@@"
+    -- print stree
+    -- print "###"
     return $ ldapToLdif stree
 
 addModifyTimestamp :: T.Text -> SearchBase -> SearchBase

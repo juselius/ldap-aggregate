@@ -21,8 +21,9 @@ objectClass: posixGroup
 cn: roger
 gidNumber: 123
 
-dn: cn=vip,ou=members,dc=target
+dn: cn=acme,ou=members,dc=target
 objectClass: groupOfNames
 objectClass: top
-cn: vip
+cn: acme
 member: uid=roger,ou=users,dc=target
+

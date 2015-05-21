@@ -64,7 +64,6 @@ data World = World {
       , sDits    :: [DIT]
       , sRules   :: [LDIFRules]
       , sTree    :: LDIFEntries
-      , sTreeRef :: LDIFEntries
       , sStamp   :: T.Text
     }
 
@@ -83,7 +82,7 @@ main = do
 
     let world = World
             tConn tDit tRules HM.empty epoch
-            sConns sDits sRules HM.empty HM.empty epoch
+            sConns sDits sRules HM.empty epoch
         updater' = updater $ updateInterval cfg
 
     w <- updateSourceTrees world >>= updater'
@@ -92,7 +91,7 @@ main = do
     putStrLn "done." -- never reached
 
 updateLoop :: (World -> IO World) -> World -> IO ()
-updateLoop updf w = updateLoop updf w
+updateLoop updf w = updf w >>= updateLoop updf
 
 updater :: Int -> World -> IO World
 updater delay world = do
@@ -108,9 +107,7 @@ runUpdates :: World -> IO World
 runUpdates world = do
     w@World{..} <- updateTargetTree world >>= updateSourceTrees
     let delta = diffLDIF tTree sTree
-        dels  = diffLDIF sTree sTreeRef
         dTree = either (error . show) id $ applyLdif tTree delta
-    putStrLn $ "dels: " ++ show dels
     modifyDIT tConn delta
     return w { tTree = dTree }
 
@@ -129,9 +126,7 @@ updateSourceTrees :: World -> IO World
 updateSourceTrees w@World{..} = do
     s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
             zipWithM fetchLdif sConns sDits'
-    return w { sTreeRef = sTree
-             , sTree = HM.union s sTree
-             }
+    return w { sTree = HM.union s sTree }
     where
         sDits' = map (addTS sStamp) sDits
 

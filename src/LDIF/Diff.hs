@@ -1,6 +1,9 @@
 --
 -- <jonas.juselius@uit.no> 2014
 --
+
+{-# LANGUAGE OverloadedStrings #-}
+
 module LDIF.Diff (
       diffLDIF
 ) where
@@ -18,17 +21,18 @@ diffLDIF l1 l2 =
     where
         adds = l2 `HM.difference` l1
         deletes = l1 `HM.difference` (l2 `HM.difference` adds)
-        changes = HM.mapWithKey (\k v ->
-          diffRecords (fetch k l1') v) l2'
+        changes = removeEmpty $ HM.mapWithKey dRec l2'
         l1' = (l1 `HM.difference` adds) `HM.difference` deletes
         l2' = (l2 `HM.difference` adds) `HM.difference` deletes
         fetch a b = fromJust $ HM.lookup a b
         toAdd    = HM.map (\(LDIFRecord dn x) -> LDIFAdd dn x)
         toDelete = HM.map (\(LDIFRecord dn _) -> LDIFDelete dn)
+        removeEmpty = HM.filter (not . HM.null . HM.delete "dn" . modMods)
+        dRec k = diffRecords (fetch k l1')
 
 diffRecords :: LDIFRecord -> LDIFRecord -> LDIFMod
 diffRecords (LDIFRecord dn r1) (LDIFRecord _ r2) =
-    LDIFChange dn $ HM.unions [adds, deletes, changes]
+    LDIFChange dn $ HM.unions $ map removeEmpty [adds, deletes, changes]
     where
         adds = setLdapOp LdapModAdd $ r2 `HM.difference` r1
         deletes = setLdapOp LdapModDelete $
@@ -38,6 +42,7 @@ diffRecords (LDIFRecord dn r1) (LDIFRecord _ r2) =
         r1' = (r1 `HM.difference` adds) `HM.difference` deletes
         r2' = (r2 `HM.difference` adds) `HM.difference` deletes
         fetch a b = fromJust $ HM.lookup a b
+        removeEmpty = HM.filter (not . HS.null)
 
 diffValues :: HS.HashSet Value
            -> HS.HashSet Value

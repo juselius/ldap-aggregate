@@ -55,7 +55,7 @@ cmdln = CmdLine {
         ]
 
 data World = World {
-      tConn      :: LDAP
+        tConn    :: LDAP
       , tDit     :: DIT
       , tRules   :: LDIFRules
       , tTree    :: LDIFEntries
@@ -84,18 +84,18 @@ main = do
     let world = World
             tConn tDit tRules HM.empty epoch
             sConns sDits sRules HM.empty HM.empty epoch
-        update' = update $ updateInterval cfg
+        updater' = updater $ updateInterval cfg
 
-    w <- update' world
-    loop update' w
+    w <- updateSourceTrees world >>= updater'
+    updateLoop updater' w
 
     putStrLn "done." -- never reached
 
-loop :: (World -> IO World) -> World -> IO ()
-loop f w = loop f w
+updateLoop :: (World -> IO World) -> World -> IO ()
+updateLoop updf w = updateLoop updf w
 
-update :: Int -> World -> IO World
-update delay world = do
+updater :: Int -> World -> IO World
+updater delay world = do
     sts <- getCurrentTimeStamp
     w <- runUpdates world
     threadDelay $ 1000000 * delay
@@ -108,10 +108,10 @@ runUpdates :: World -> IO World
 runUpdates world = do
     w@World{..} <- updateTargetTree world >>= updateSourceTrees
     let delta = diffLDIF tTree sTree
+        dels  = diffLDIF sTree sTreeRef
         dTree = either (error . show) id $ applyLdif tTree delta
-    -- putStrLn $ "runUpdates: " ++ show delta ++ "\n--\n"
+    putStrLn $ "dels: " ++ show dels
     modifyDIT tConn delta
-    -- putStrLn "@@@"
     return w { tTree = dTree }
 
 addTS :: T.Text -> DIT -> DIT

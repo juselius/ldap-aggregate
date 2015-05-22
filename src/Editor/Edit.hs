@@ -16,6 +16,7 @@ module Editor.Edit (
 
 import Data.Monoid
 import Data.List
+import Data.Hashable
 import Text.Regex
 import Text.Regex.TDFA
 import LDIF
@@ -43,6 +44,14 @@ data Rule a =
     | Cont   { pat :: a, next :: Rule a }
     | Done
     deriving (Show, Eq, Ord)
+
+instance (Hashable a, Monoid a) => Hashable (Rule a) where
+    hashWithSalt s (Insert a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Delete a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Subst a b c) =
+        s `hashWithSalt` hash (a `mappend` b) + hashWithSalt s c
+    hashWithSalt s (Cont a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Done) = s `hashWithSalt` (0 :: Int)
 
 instance Monoid (Rule a) where
     mempty = Done

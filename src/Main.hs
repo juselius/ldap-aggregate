@@ -2,9 +2,9 @@
 -- <jonas.juselius@uit.no> 2014
 --
 -- TODO:
---  * verbosity
---  * automatic container filtering
---  * parallelize
+-- * verbosity
+-- * automatic container filtering
+-- * parallelize
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -12,10 +12,8 @@ module Main where
 
 import Paths_ldap_aggregate
 import System.Console.CmdArgs
-import System.Locale
 import System.Posix.Signals
 import Control.Monad
-import Control.Applicative
 import Control.Concurrent
 import LDAP
 import LDIF
@@ -23,8 +21,6 @@ import Config
 import DITs
 import Data.Version
 import Data.IORef
-import Data.Time.Clock
-import Data.Time.Format
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified System.Remote.Monitoring as EKG
@@ -90,6 +86,7 @@ main = do
     scheduleSweep (sweepInterval cfg)
     putStrLn "done." -- never reached
 
+-- | Update soruce and target trees and start the update loop
 aggregator :: World -> IO ()
 aggregator world = do
     let updater' = updater $ dt world
@@ -101,6 +98,7 @@ updateLoop :: (World -> IO World) -> World -> IO ()
 updateLoop updf w = updf w >>= updateLoop updf
 
 -- | Update time stamps, process updates and sleep until next update
+-- updater :: Int -> World -> WriterT (Int, String) IO World
 updater :: Int -> World -> IO World
 updater delay world = do
     sts <- getCurrentTimeStamp
@@ -111,7 +109,7 @@ updater delay world = do
              , sStamp = sts
              }
 
-
+-- | Sleep until next sweep, restart worker thread(s), and reschedule sweep
 scheduleSweep :: Int -> IO ()
 scheduleSweep i = do
     threadDelay $ inSeconds i
@@ -135,25 +133,22 @@ runUpdates world = do
     modifyDIT tConn delta
     return w { tTree = dTree }
 
--- | Add new timestamp to all search bases
-addTS :: T.Text -> DIT -> DIT
-addTS ts d@DIT{..} =
-    d { searchBases = map (addModifyTimestamp ts) searchBases }
-
+-- | Fetch target tree LDIF, apply rules and time stamp
 updateTargetTree :: World -> IO World
 updateTargetTree w@World{..} = do
     t <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
     return w { tTree = HM.union t tTree }
     where
-        tDit'  = addTS tStamp tDit
+        tDit'  = updateTimeStamp tStamp tDit
 
+-- | Fetch source trees LDIF, apply rules, unify and time stamp
 updateSourceTrees :: World -> IO World
 updateSourceTrees w@World{..} = do
     s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
             zipWithM fetchLdif sConns sDits'
     return w { sTree = HM.union s sTree }
     where
-        sDits' = map (addTS sStamp) sDits
+        sDits' = map (updateTimeStamp sStamp) sDits
 
 fetchLdif :: LDAP -> DIT -> IO LDIFEntries
 fetchLdif l DIT{..} = do
@@ -162,26 +157,9 @@ fetchLdif l DIT{..} = do
         "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
     return $ ldapToLdif tree
 
-addModifyTimestamp :: T.Text -> SearchBase -> SearchBase
-addModifyTimestamp ts b@SearchBase{..} = b {
-        searchFilter = addTSFilter
-        }
-    where
-        addTSFilter =
-            "(&(modifyTimestamp>=" `T.append` ts `T.append` ")"
-            `T.append` sf `T.append` ")"
-        sf =
-            if T.head searchFilter == '('
-                then searchFilter
-                else "(" `T.append` searchFilter `T.append` ")"
-
-getCurrentTimeStamp :: IO T.Text
-getCurrentTimeStamp = tsfmt <$> getCurrentTime
-    where
-        tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"
-
 epoch :: T.Text
 epoch = "19700101000000Z"
 
 inSeconds :: Int -> Int
 inSeconds = (*) 1000000
+

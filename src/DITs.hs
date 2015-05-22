@@ -11,6 +11,8 @@ module DITs (
     , fetchSubTree
     , applyLdifRules
     , getLdifRules
+    , updateTimeStamp
+    , getCurrentTimeStamp
     , printSubTree
     , LDAPEntry(..)
     , LDAPMod(..)
@@ -22,9 +24,12 @@ module DITs (
 import Data.Yaml
 import Data.Function
 import Data.Monoid
+import Data.Time.Clock
+import Data.Time.Format
 import Control.Applicative
 import Control.Monad
 import Control.Exception
+import System.Locale
 import LDAP
 import LDIF
 import Editor
@@ -149,4 +154,27 @@ addAttrRewriteDn d@DIT{..} =
         df acc r@(RewriteRule (Subst f t _)) =
             RewriteRule (Cont ".*" (Subst f t Done)):r:acc
         df acc r = r:acc
+
+-- | Update new timestamp to all search bases
+updateTimeStamp :: T.Text -> DIT -> DIT
+updateTimeStamp ts d@DIT{..} =
+    d { searchBases = map (addModifyTimestamp ts) searchBases }
+
+addModifyTimestamp :: T.Text -> SearchBase -> SearchBase
+addModifyTimestamp ts b@SearchBase{..} = b {
+        searchFilter = addTSFilter
+        }
+    where
+        addTSFilter =
+            "(&(modifyTimestamp>=" `T.append` ts `T.append` ")"
+            `T.append` sf `T.append` ")"
+        sf =
+            if T.head searchFilter == '('
+                then searchFilter
+                else "(" `T.append` searchFilter `T.append` ")"
+
+getCurrentTimeStamp :: IO T.Text
+getCurrentTimeStamp = tsfmt <$> getCurrentTime
+    where
+        tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"
 

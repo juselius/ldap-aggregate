@@ -2,10 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 -- TODO:
---  * exceptions
---  * error msgs
 --  * verbosity
---  * deletes
 --  * automatic container filtering
 --  * parallelize
 {-# LANGUAGE OverloadedStrings #-}
@@ -16,14 +13,16 @@ module Main where
 import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import System.Locale
+import System.Posix.Signals
 import Control.Monad
 import Control.Applicative
-import Control.Concurrent (threadDelay)
+import Control.Concurrent
 import LDAP
 import LDIF
 import Config
 import DITs
 import Data.Version
+import Data.IORef
 import Data.Time.Clock
 import Data.Time.Format
 import qualified Data.Text as T
@@ -52,10 +51,12 @@ cmdln = CmdLine {
         , "Edit, filter and rewrite LDIF from one or more source DITs"
         , "onto a target DIT."
         , ""
+        , "kill -HUP PID initiates a full resweep of all trees."
         ]
 
 data World = World {
-        tConn    :: LDAP
+        dt       :: Int
+      , tConn    :: LDAP
       , tDit     :: DIT
       , tRules   :: LDIFRules
       , tTree    :: LDIFEntries
@@ -70,8 +71,8 @@ data World = World {
 main :: IO ()
 main = do
     void $ EKG.forkServer "localhost" 8000
-    a   <- cmdArgs cmdln
-    cfg <- readConfig (config a)
+    a <- cmdArgs cmdln
+    cfg <- readConfig $ config a
     let
         tDit   = targetDIT cfg
         tRules = getLdifRules tDit
@@ -80,29 +81,52 @@ main = do
     tConn   <- bindDIT tDit
     sConns  <- mapM bindDIT sDits
 
-    let world = World
+    let world = World (updateInterval cfg)
             tConn tDit tRules HM.empty epoch
             sConns sDits sRules HM.empty epoch
-        updater' = updater $ updateInterval cfg
+    t <- forkIO $ aggregator world
+    tid <- newIORef t
+    void $ installHandler sigHUP (Catch (hupHandler tid world)) Nothing
+    scheduleSweep (sweepInterval cfg)
+    putStrLn "done." -- never reached
 
+aggregator :: World -> IO ()
+aggregator world = do
+    let updater' = updater $ dt world
     w <- updateSourceTrees world >>= updater'
     updateLoop updater' w
 
-    putStrLn "done." -- never reached
-
+-- | Run updates until a full sweep is initiated
 updateLoop :: (World -> IO World) -> World -> IO ()
 updateLoop updf w = updf w >>= updateLoop updf
 
+-- | Update time stamps, process updates and sleep until next update
 updater :: Int -> World -> IO World
 updater delay world = do
     sts <- getCurrentTimeStamp
     w <- runUpdates world
-    threadDelay $ 1000000 * delay
+    threadDelay $ inSeconds delay
     tts <- getCurrentTimeStamp
     return w { tStamp = tts
              , sStamp = sts
              }
 
+
+scheduleSweep :: Int -> IO ()
+scheduleSweep i = do
+    threadDelay $ inSeconds i
+    raiseSignal sigHUP
+    scheduleSweep i
+
+hupHandler :: IORef ThreadId -> World -> IO ()
+hupHandler tid world = do
+    t <- readIORef tid
+    killThread t
+    newt <- forkIO $ aggregator world
+    writeIORef tid newt
+
+-- | Update and apply rules to the source and target trees, diff and commit
+-- changes.
 runUpdates :: World -> IO World
 runUpdates world = do
     w@World{..} <- updateTargetTree world >>= updateSourceTrees
@@ -111,6 +135,7 @@ runUpdates world = do
     modifyDIT tConn delta
     return w { tTree = dTree }
 
+-- | Add new timestamp to all search bases
 addTS :: T.Text -> DIT -> DIT
 addTS ts d@DIT{..} =
     d { searchBases = map (addModifyTimestamp ts) searchBases }
@@ -158,3 +183,5 @@ getCurrentTimeStamp = tsfmt <$> getCurrentTime
 epoch :: T.Text
 epoch = "19700101000000Z"
 
+inSeconds :: Int -> Int
+inSeconds = (*) 1000000

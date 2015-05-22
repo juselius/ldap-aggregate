@@ -116,6 +116,7 @@ scheduleSweep i = do
     raiseSignal sigHUP
     scheduleSweep i
 
+-- | Restart the worker thread, triggering a full sweep of all DITs
 hupHandler :: IORef ThreadId -> World -> IO ()
 hupHandler tid world = do
     t <- readIORef tid
@@ -150,6 +151,7 @@ updateSourceTrees w@World{..} = do
     where
         sDits' = map (updateTimeStamp sStamp) sDits
 
+-- | Fetch and parse ldif data from all subtrees in a DIT
 fetchLdif :: LDAP -> DIT -> IO LDIFEntries
 fetchLdif l DIT{..} = do
     tree <- fetchTree l searchBases
@@ -157,9 +159,11 @@ fetchLdif l DIT{..} = do
         "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
     return $ ldapToLdif tree
 
+-- | Computer genesis
 epoch :: T.Text
 epoch = "19700101000000Z"
 
+-- | Convert microseconds to seconds
 inSeconds :: Int -> Int
 inSeconds = (*) 1000000
 

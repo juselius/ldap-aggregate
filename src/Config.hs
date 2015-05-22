@@ -16,14 +16,16 @@ import Control.Monad
 import DITs
 
 data Config = Config {
-      updateInterval :: Int
-    , targetDIT  :: DIT
-    , sourceDITs :: [DIT]
+        updateInterval :: Int
+      , sweepInterval  :: Int
+      , targetDIT      :: DIT
+      , sourceDITs     :: [DIT]
     } deriving (Show, Eq)
 
 instance FromJSON Config where
     parseJSON (Object o) = Config
         <$>  o .:? "updateInterval" .!= 60
+        <*>  o .:? "sweepInterval" .!= 86400
         <*>  o .: "target"
         <*>  o .: "sources"
     parseJSON _ = mzero

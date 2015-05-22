@@ -1,4 +1,5 @@
 updateInterval: 5
+sweepInterval: 3600
 
 target:
     uri: ldap://localhost

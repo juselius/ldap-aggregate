@@ -24,6 +24,7 @@ import Data.Function
 import Data.Monoid
 import Control.Applicative
 import Control.Monad
+import Control.Exception
 import LDAP
 import LDIF
 import Editor
@@ -49,7 +50,7 @@ data LDIFRules = LDIFRules {
       rewriteRules :: [Rule T.Text]
     , ignoreRules  :: [Rule T.Text]
     , insertRules  :: [Rule T.Text]
-    }
+    } deriving (Show)
 
 instance FromJSON DIT where
     parseJSON (Object o) = fmap addAttrRewriteDn $ DIT
@@ -88,15 +89,21 @@ modifyDIT ldap ldif = do
         runMod (T.unpack -> dn, entry) = case entry of
             LDIFAdd    _ (recordToLdapAdd -> e) ->
                 info e
-                >> ldapAdd ldap dn e
+                >> try (ldapAdd ldap dn e)
+                >>= either (report entry) return
             LDIFChange _ (recordToLdapMod -> e) ->
                 unless (null e) (info e)
-                >> ldapModify ldap dn e
+                >> try (ldapModify ldap dn e)
+                >>= either (report entry) return
             LDIFDelete _                        ->
-                putStrLn ("delete: " ++ dn) >> ldapDelete ldap dn
+                putStrLn ("delete: " ++ dn)
+                >> try (ldapDelete ldap dn)
+                >>= either (report entry) return
         pf (LDIFDelete _) = True
         pf _ = False
         info e = mapM_ (\x -> putStrLn (show x)) e >> putStrLn "--"
+        report :: LDIFMod -> LDAPException -> IO ()
+        report l e = putStrLn $ show e ++ ": >>>\n" ++ show l ++ "<<<"
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
 fetchTree ldap =
@@ -119,8 +126,11 @@ getLdifRules :: DIT -> LDIFRules
 getLdifRules DIT{..} = LDIFRules rw ign ins
     where
         rw  = map doRewrite rewriteFilters
-        ign = map doIgnore  ignoreFilters
+        ign = ignoreSearchBases ++ map doIgnore  ignoreFilters
         ins = []
+        ignoreSearchBases = map sb2rl searchBases
+        sb2rl (SearchBase b _) =
+            Delete ("^" `T.append` b `T.append` "$") Done
 
 applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
 applyLdifRules LDIFRules{..} =

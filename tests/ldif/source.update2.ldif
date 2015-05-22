@@ -1,0 +1,7 @@
+dn: uid=felgen,ou=users,dc=source
+changetype: modify
+replace: gidNumber
+gidNumber: 100
+-
+
+

@@ -14,6 +14,8 @@ import Text.Regex.TDFA
 import LDAP
 import DITs
 import LDIF
+import Control.Monad
+import Control.Monad.Trans.Writer.Lazy
 import qualified Data.Text as T
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
@@ -44,8 +46,8 @@ clearSubTree ldap tree = do
             | ledn e =~ ("^cn=admin,dc=[^=]*$" :: String) :: Bool = False
             | otherwise = True
 
-commitLdap :: LDAP -> T.Text -> IO()
-commitLdap ldap x = modifyDIT ldap mods
+commitLdap :: LDAP -> T.Text -> IO ()
+commitLdap ldap x = liftM fst $ runWriterT (modifyDIT ldap mods)
     where
          mods = lMod . ldifToMod . ldifStrToLdapAdd $ x
 

@@ -14,11 +14,13 @@ module DITs (
     , updateTimeStamp
     , getCurrentTimeStamp
     , printSubTree
+    , logDbg
     , LDAPEntry(..)
     , LDAPMod(..)
     , DIT(..)
     , SearchBase(..)
     , LDIFRules(..)
+    , Log
     ) where
 
 import Data.Yaml
@@ -27,8 +29,10 @@ import Data.Monoid
 import Data.Time.Clock
 import Data.Time.Format
 import Control.Applicative
-import Control.Monad
 import Control.Exception
+import Control.Monad
+import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.IO.Class
 import System.Locale
 import LDAP
 import LDIF
@@ -57,6 +61,8 @@ data LDIFRules = LDIFRules {
     , insertRules  :: [Rule T.Text]
     } deriving (Show)
 
+type Log a b = WriterT [(Int, String)] a b
+
 instance FromJSON DIT where
     parseJSON (Object o) = fmap addAttrRewriteDn $ DIT
         <$> o .: "uri"
@@ -83,7 +89,7 @@ bindDIT DIT{..} = do
         binddn' = T.unpack binddn
         passwd' = T.unpack passwd
 
-modifyDIT :: LDAP -> LDIFMods -> IO ()
+modifyDIT :: LDAP -> LDIFMods -> Log IO ()
 modifyDIT ldap ldif = do
     mapM_ runMod lDel
     mapM_ runMod lOther
@@ -92,27 +98,28 @@ modifyDIT ldap ldif = do
         (L.reverse -> lDel, lOther) = L.partition (pf . snd) ldif'
         orf a b =  T.length a `compare` T.length b
         runMod (T.unpack -> dn, entry) = case entry of
-            LDIFAdd    _ (recordToLdapAdd -> e) ->
-                info e
-                >> try (ldapAdd ldap dn e)
-                >>= either (report entry) return
-            LDIFChange _ (recordToLdapMod -> e) ->
-                unless (null e) (info e)
-                >> try (ldapModify ldap dn e)
-                >>= either (report entry) return
-            LDIFDelete _                        ->
-                putStrLn ("delete: " ++ dn)
-                >> try (ldapDelete ldap dn)
-                >>= either (report entry) return
+            LDIFAdd    _ (recordToLdapAdd -> e) -> do
+                logDbg 0 ("add: " ++ dn)
+                logDbg 1 (info e)
+                x <- liftIO . try $ ldapAdd ldap dn e
+                either (report entry) return x
+            LDIFChange _ (recordToLdapMod -> e) -> do
+                unless (null e) (logDbg 0 ("change: " ++ dn))
+                unless (null e) (logDbg 1 (info e))
+                x <- liftIO . try $ ldapModify ldap dn e
+                either (report entry) return x
+            LDIFDelete _                        -> do
+                logDbg 0 ("delete: " ++ dn)
+                x <- liftIO . try $ ldapDelete ldap dn
+                either (report entry) return x
         pf (LDIFDelete _) = True
         pf _ = False
-        info e = mapM_  print e >> putStrLn "--"
-        report :: LDIFMod -> LDAPException -> IO ()
-        report l e = putStrLn $ show e ++ ": >>>\n" ++ show l ++ "<<<"
+        info e = unlines (map show e) ++ "--"
+        report :: LDIFMod -> LDAPException -> Log IO ()
+        report l e = logDbg 0 (show e ++ ": >>>\n" ++ show l ++ "<<<")
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
-fetchTree ldap =
-    foldM  (\a b -> fmap (a ++) (fetchSubTree ldap b)) []
+fetchTree ldap = foldM (\a b -> fmap (a ++) (fetchSubTree ldap b)) []
 
 fetchSubTree :: LDAP -> SearchBase -> IO [LDAPEntry]
 fetchSubTree ldap SearchBase{..} =
@@ -175,3 +182,5 @@ getCurrentTimeStamp = tsfmt <$> getCurrentTime
     where
         tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"
 
+logDbg :: Monad m => Int -> String -> WriterT [(Int, String)] m ()
+logDbg lvl msg = writer ((),[(lvl, msg)])

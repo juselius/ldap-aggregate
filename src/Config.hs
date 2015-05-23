@@ -8,13 +8,11 @@
 module Config (
       Config(..)
     , readConfig
-    , logVerbose
 ) where
 
 import Data.Yaml
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Writer.Lazy
 import DITs
 
 data Config = Config {
@@ -35,5 +33,3 @@ instance FromJSON Config where
 readConfig :: FilePath -> IO Config
 readConfig f = liftM (either (error . show) id) $ decodeFileEither f
 
-logVerbose :: Monad m => Int -> String -> WriterT [(Int, String)] m ()
-logVerbose lvl msg = writer ((),[(lvl, msg)])

@@ -3,7 +3,7 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MultiWayIf #-}
-module Editor.Rules (
+module LDIF.Editor.Rules (
       Rule(..)
     , IgnoreRule(..)
     , RewriteRule(..)
@@ -14,7 +14,7 @@ import Data.Yaml
 import Data.Maybe
 import Data.Monoid
 import Control.Monad
-import Editor.Edit
+import LDIF.Editor.Edit
 import qualified Data.Text as T
 
 newtype IgnoreRule  = IgnoreRule  {

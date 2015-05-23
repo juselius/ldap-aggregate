@@ -36,7 +36,7 @@ import Control.Monad.IO.Class
 import System.Locale
 import LDAP
 import LDIF
-import Editor
+import LDIF.Editor
 import qualified Data.Text as T
 import qualified Data.List as L
 import qualified Data.HashMap.Lazy as HM

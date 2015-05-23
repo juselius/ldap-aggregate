@@ -7,7 +7,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
-module Editor.Edit (
+module LDIF.Editor.Edit (
       Editable(..)
     , Editor(..)
     , Rule(..)

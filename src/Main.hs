@@ -21,7 +21,7 @@ import LDAP
 import LDIF
 import Config
 import DITs
-import Editor.Edit (Rule(..))
+import LDIF.Editor.Edit (Rule(..))
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified System.Remote.Monitoring as EKG

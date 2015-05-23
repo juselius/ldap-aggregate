@@ -1,3 +1,6 @@
+updateInterval: 10
+sweepInterval: 30
+
 target:
     uri: target
     binddn: cn=admin,dc=target

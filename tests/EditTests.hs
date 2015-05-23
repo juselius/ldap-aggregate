@@ -6,7 +6,7 @@ module EditTests (
 import Test.Tasty
 import Test.Tasty.HUnit
 import Data.Monoid
-import Editor
+import LDIF.Editor
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T

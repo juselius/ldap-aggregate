@@ -7,7 +7,7 @@ module DITTests (
 import Test.Tasty
 import Test.Tasty.HUnit
 import Data.List
-import Editor
+import LDIF.Editor
 import Config
 import DITs
 
@@ -22,7 +22,7 @@ ditTests =
 testParse :: Assertion
 testParse = do
     c <- readConfig "tests/dit.yml"
-    sortConf c @?= sortConf (Config 60 tDIT [sDIT0])
+    sortConf c @?= sortConf (Config 10 30 tDIT [sDIT0])
 
 sortConf :: Config -> Config
 sortConf c@Config{..} = c {

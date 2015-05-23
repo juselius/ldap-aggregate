@@ -114,12 +114,9 @@ updater lvl delay world = do
 
 -- | Given a verbosity level, print all log entries with a smaller level
 printLog :: Int -> [(Int, String)] -> IO ()
-printLog lvl l = mapM_ prlog l
+printLog lvl = mapM_ prlog
     where
-        prlog (n, s) =
-            if n <= lvl
-                then putStrLn s
-                else return ()
+        prlog (n, s) = when (n <= lvl) $ putStrLn s
 
 -- | Update and apply rules to the source and target trees, diff and commit
 -- changes.

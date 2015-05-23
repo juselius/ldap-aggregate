@@ -13,6 +13,7 @@ target:
         - dn: ^ou=.*$
         - dn: uid=roger,ou=users,dc=target
         - dn: cn=roger,ou=groups,dc=target
+        - dn: cn=acme,ou=members,dc=target
         - attr: entryUUID
 
 sources:

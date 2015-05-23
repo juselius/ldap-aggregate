@@ -106,7 +106,7 @@ modifyDIT ldap ldif = do
                 >>= either (report entry) return
         pf (LDIFDelete _) = True
         pf _ = False
-        info e = mapM_ (\x -> putStrLn (show x)) e >> putStrLn "--"
+        info e = mapM_  print e >> putStrLn "--"
         report :: LDIFMod -> LDAPException -> IO ()
         report l e = putStrLn $ show e ++ ": >>>\n" ++ show l ++ "<<<"
 
@@ -133,17 +133,6 @@ getLdifRules DIT{..} = LDIFRules rw ign ins
         rw  = map doRewrite rewriteFilters
         ign = map doIgnore  ignoreFilters
         ins = []
-
--- | Get LDIF rules, with search bases appended to ignore rules
-getLdifRules' :: DIT -> LDIFRules
-getLdifRules' DIT{..} = LDIFRules rw ign ins
-    where
-        rw  = map doRewrite rewriteFilters
-        ign = ignoreSearchBases ++ map doIgnore  ignoreFilters
-        ins = []
-        ignoreSearchBases = map sb2rl searchBases
-        sb2rl (SearchBase b _) =
-            Delete ("^" `T.append` b `T.append` "$") Done
 
 applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
 applyLdifRules LDIFRules{..} =

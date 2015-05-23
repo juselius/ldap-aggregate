@@ -36,7 +36,6 @@ import Editor
 import qualified Data.Text as T
 import qualified Data.List as L
 import qualified Data.HashMap.Lazy as HM
-import qualified Data.HashSet as HS
 
 data DIT = DIT {
       uri :: T.Text
@@ -53,9 +52,9 @@ data SearchBase = SearchBase {
     } deriving (Show, Eq, Ord)
 
 data LDIFRules = LDIFRules {
-      rewriteRules :: HS.HashSet (Rule T.Text)
-    , ignoreRules  :: HS.HashSet (Rule T.Text)
-    , insertRules  :: HS.HashSet (Rule T.Text)
+      rewriteRules :: [Rule T.Text]
+    , ignoreRules  :: [Rule T.Text]
+    , insertRules  :: [Rule T.Text]
     } deriving (Show)
 
 instance FromJSON DIT where
@@ -131,17 +130,17 @@ printSubTree ldap tree = do
 getLdifRules :: DIT -> LDIFRules
 getLdifRules DIT{..} = LDIFRules rw ign ins
     where
-        rw  = HS.fromList $ map doRewrite rewriteFilters
-        ign = HS.fromList $ map doIgnore  ignoreFilters
-        ins = HS.empty
+        rw  = map doRewrite rewriteFilters
+        ign = map doIgnore  ignoreFilters
+        ins = []
 
 -- | Get LDIF rules, with search bases appended to ignore rules
 getLdifRules' :: DIT -> LDIFRules
 getLdifRules' DIT{..} = LDIFRules rw ign ins
     where
-        rw  = HS.fromList $ map doRewrite rewriteFilters
-        ign = HS.fromList $ ignoreSearchBases ++ map doIgnore  ignoreFilters
-        ins = HS.empty
+        rw  = map doRewrite rewriteFilters
+        ign = ignoreSearchBases ++ map doIgnore  ignoreFilters
+        ins = []
         ignoreSearchBases = map sb2rl searchBases
         sb2rl (SearchBase b _) =
             Delete ("^" `T.append` b `T.append` "$") Done
@@ -149,9 +148,9 @@ getLdifRules' DIT{..} = LDIFRules rw ign ins
 applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
 applyLdifRules LDIFRules{..} =
       reconcile
-    . runEdits (HS.toList insertRules)
-    . runEdits (HS.toList rewriteRules)
-    . runEdits (HS.toList ignoreRules)
+    . runEdits insertRules
+    . runEdits rewriteRules
+    . runEdits ignoreRules
     where
         reconcile = HM.foldl' (\acc v -> HM.insert (rDn v) v acc) mempty
 

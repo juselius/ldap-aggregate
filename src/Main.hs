@@ -3,24 +3,28 @@
 --
 -- TODO:
 -- * verbosity
--- * automatic container filtering
 -- * parallelize
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 module Main where
 
 import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import System.Posix.Signals
 import Control.Monad
+-- import Control.Monad.IO.Class
+-- import Control.Applicative
 import Control.Concurrent
+import Data.Version
+import Data.List
+import Data.IORef
 import LDAP
 import LDIF
 import Config
 import DITs
-import Data.Version
-import Data.IORef
+import Editor.Edit (Rule(..))
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified System.Remote.Monitoring as EKG
@@ -47,7 +51,7 @@ cmdln = CmdLine {
         , "Edit, filter and rewrite LDIF from one or more source DITs"
         , "onto a target DIT."
         , ""
-        , "kill -HUP PID initiates a full resweep of all trees."
+        , "kill -HUP PID initiates a full sweep of all trees."
         ]
 
 data World = World {
@@ -90,7 +94,7 @@ main = do
 aggregator :: World -> IO ()
 aggregator world = do
     let updater' = updater $ dt world
-    w <- updateSourceTrees world >>= updater'
+    w <- updateTargetTree world >>= updateSourceTrees >>= updater'
     updateLoop updater' w
 
 -- | Run updates until a full sweep is initiated
@@ -106,8 +110,7 @@ updater delay world = do
     threadDelay $ inSeconds delay
     tts <- getCurrentTimeStamp
     return w { tStamp = tts
-             , sStamp = sts
-             }
+             , sStamp = sts }
 
 -- | Sleep until next sweep, restart worker thread(s), and reschedule sweep
 scheduleSweep :: Int -> IO ()
@@ -137,16 +140,19 @@ runUpdates world = do
 -- | Fetch target tree LDIF, apply rules and time stamp
 updateTargetTree :: World -> IO World
 updateTargetTree w@World{..} = do
-    t <- liftM (applyLdifRules tRules) $ fetchLdif tConn tDit'
-    return w { tTree = HM.union t tTree }
+    l <- fetchLdif tConn tDit'
+    let l' = applyLdifRules (ignoreTwigs l) l -- Ignore non-leaf entries
+        t  = applyLdifRules tRules l'
+    return w { tTree   = HM.union t tTree }
     where
         tDit'  = updateTimeStamp tStamp tDit
 
 -- | Fetch source trees LDIF, apply rules, unify and time stamp
 updateSourceTrees :: World -> IO World
 updateSourceTrees w@World{..} = do
-    s <- liftM (HM.unions . zipWith applyLdifRules sRules) $
-            zipWithM fetchLdif sConns sDits'
+    l <- zipWithM fetchLdif sConns sDits'
+    let l' = zipWith (applyLdifRules . ignoreTwigs) l l -- Ignore non-leaf entries
+        s = (HM.unions . zipWith applyLdifRules sRules) l'
     return w { sTree = HM.union s sTree }
     where
         sDits' = map (updateTimeStamp sStamp) sDits
@@ -155,9 +161,19 @@ updateSourceTrees w@World{..} = do
 fetchLdif :: LDAP -> DIT -> IO LDIFEntries
 fetchLdif l DIT{..} = do
     tree <- fetchTree l searchBases
-    unless (null tree) . putStrLn $
-        "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
+    -- unless (null tree) . putStrLn $
+        -- "DIT: " ++ show searchBases ++ "\n==> " ++ show tree ++ "\n"
     return $ ldapToLdif tree
+
+-- | Add automatic ignore rules for all non-leaf entries
+ignoreTwigs :: LDIFEntries -> LDIFRules
+ignoreTwigs (HM.toList -> l) = LDIFRules [] twigR []
+        where
+            twigR = map (\s -> Delete (anchor s) Done) $ getTwigs l
+            getTwigs x = nub $ foldl' chopLeaves [] x
+            chopLeaves acc (dn, _) = twig dn : acc
+            twig dn = T.tail $ T.dropWhile (/= ',') dn
+            anchor s = "^" `T.append` s `T.append` "$"
 
 -- | Computer genesis
 epoch :: T.Text

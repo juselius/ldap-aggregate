@@ -7,17 +7,17 @@ module LDIF.Apply (applyLdif) where
 
 import LDIF.Types
 import Data.Maybe
-import Control.Monad.Error
+import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 
-type ApplyError = ErrorT String Identity
+type ApplyError = ExceptT String Identity
 
 applyLdif :: LDIFEntries -> LDIFMods -> Either String LDIFEntries
 applyLdif ldif mods =
-    runIdentity . runErrorT $ applyMods (HM.elems mods) ldif
+    runIdentity . runExceptT $ applyMods (HM.elems mods) ldif
 
 applyMods :: [LDIFMod] -> LDIFEntries -> ApplyError LDIFEntries
 applyMods mods ldif =
@@ -50,9 +50,9 @@ modLdif ldif = \case
                         then HM.delete dn ldif
                         else HM.insert dn r' ldif
                 Nothing -> throwNotExists dn
-        throwExists    dn = throwError $
+        throwExists    dn = throwE $
             "Entry already exists, dn: " ++ T.unpack dn
-        throwNotExists dn = throwError $
+        throwNotExists dn = throwE $
             "Entry does not exists, dn: " ++ T.unpack dn
 
 chEntry :: LDIFRecord

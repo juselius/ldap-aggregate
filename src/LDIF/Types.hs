@@ -3,7 +3,6 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -26,7 +25,6 @@ module LDIF.Types (
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 import Data.Hashable
-import Data.Monoid
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
@@ -91,7 +89,7 @@ instance Show LDIFMod where
         LDIFDelete dn ->
             formatDn dn ++ "changetype: delete"
 
-instance Show (LDIFAttrs T.Text) where
+instance {-# OVERLAPS #-} Show (LDIFAttrs T.Text) where
     show = HM.foldlWithKey' showAttrs mempty
         where
             showAttrs acc k v = acc `mappend` genAttrStr k v
@@ -99,7 +97,7 @@ instance Show (LDIFAttrs T.Text) where
                 k `T.append` ": " `T.append` x) $
                   HS.toList v
 
-instance Show (LDIFAttrs (LDAPModOp, T.Text)) where
+instance {-# OVERLAPS #-} Show (LDIFAttrs (LDAPModOp, T.Text)) where
     show = HM.foldlWithKey' showMod mempty
         where
             showMod acc k v = acc `mappend` genModStr k v

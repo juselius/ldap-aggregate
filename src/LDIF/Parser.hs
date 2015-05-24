@@ -26,7 +26,6 @@ import Data.Hashable
 import "parsec" Text.Parsec as PR
 import "parsec" Text.Parsec.Text
 import Control.Arrow (second)
-import Control.Applicative ((<$>))
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS

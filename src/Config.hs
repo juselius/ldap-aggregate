@@ -3,7 +3,6 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiWayIf #-}
 module Config (
       Config(..)
@@ -11,7 +10,6 @@ module Config (
 ) where
 
 import Data.Yaml
-import Control.Applicative
 import Control.Monad
 import DITs
 

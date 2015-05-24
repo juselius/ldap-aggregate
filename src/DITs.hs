@@ -25,15 +25,12 @@ module DITs (
 
 import Data.Yaml
 import Data.Function
-import Data.Monoid
 import Data.Time.Clock
 import Data.Time.Format
-import Control.Applicative
 import Control.Exception
 import Control.Monad
 import Control.Monad.Trans.Writer.Lazy
 import Control.Monad.IO.Class
-import System.Locale
 import LDAP
 import LDIF
 import LDIF.Editor
@@ -143,12 +140,13 @@ getLdifRules DIT{..} = LDIFRules rw ign ins
 
 applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
 applyLdifRules LDIFRules{..} =
-      reconcile
+      reconcileDn
     . runEdits insertRules
     . runEdits rewriteRules
     . runEdits ignoreRules
     where
-        reconcile = HM.foldl' (\acc v -> HM.insert (rDn v) v acc) mempty
+        -- insert the rewritten dn:s into the hashmap
+        reconcileDn = HM.foldl' (\acc v -> HM.insert (rDn v) v acc) mempty
 
 -- for every dn rewrite, add the corresponding rewrite to attr dn
 addAttrRewriteDn :: DIT -> DIT

@@ -2,6 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
 module LDIF.Editor.Rules (
       Rule(..)
@@ -12,10 +13,17 @@ module LDIF.Editor.Rules (
 
 import Data.Yaml
 import Data.Maybe
-import Data.Monoid
+import Data.Hashable
 import Control.Monad
-import LDIF.Editor.Edit
 import qualified Data.Text as T
+
+data Rule a =
+      Insert { pat :: a, next :: Rule a }
+    | Delete { pat :: a, next :: Rule a }
+    | Subst  { pat :: a, subpat :: a, next :: Rule a }
+    | Cont   { pat :: a, next :: Rule a }
+    | Done
+    deriving (Show, Eq, Ord)
 
 newtype IgnoreRule  = IgnoreRule  {
     doIgnore  :: Rule T.Text
@@ -28,6 +36,26 @@ newtype RewriteRule = RewriteRule {
 newtype InsertRule  = InsertRule  {
     doInsert  :: Rule T.Text
     } deriving (Show, Eq, Ord)
+
+instance Monoid (Rule a) where
+    mempty = Done
+    mappend a Done = a
+    mappend Done a = a
+    mappend a b = if atend a
+        then a { next = b }
+        else a { next = next a `mappend` b }
+        where
+            atend (next -> Done) = True
+            atend _ = False
+
+instance (Hashable a, Monoid a) => Hashable (Rule a) where
+    hashWithSalt s (Insert a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Delete a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Subst a b c) =
+        s `hashWithSalt` hash (a `mappend` b) + hashWithSalt s c
+    hashWithSalt s (Cont a b) = s `hashWithSalt` hash a + hashWithSalt s b
+    hashWithSalt s (Done) = s `hashWithSalt` (0 :: Int)
+
 
 instance FromJSON IgnoreRule where
     parseJSON (Object o) = do

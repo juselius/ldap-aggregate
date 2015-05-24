@@ -3,23 +3,21 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
 module LDIF.Editor.Edit (
       Editable(..)
     , Editor(..)
-    , Rule(..)
     , runEdits
     ) where
 
-import Data.Monoid
 import Data.List
-import Data.Hashable
 import Text.Regex
 import Text.Regex.TDFA
 import LDIF
+import LDIF.Editor.Rules
+-- import Control.Parallel.Strategies
 import qualified Data.Text as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
@@ -31,41 +29,13 @@ class (Monoid t, Eq t) => Editable t where
     edit :: (Editor a, Editable t) => a -> t -> t
 
 class Editor a where
-    type T  :: *
-    applyR  :: a -> T -> T
-    matchP  :: a -> T -> Bool
-    contP   :: a -> T -> Bool
+    applyR  :: a -> T.Text -> T.Text
+    matchP  :: a -> T.Text  -> Bool
+    contP   :: a -> T.Text  -> Bool
     nextR   :: a -> a
 
-data Rule a =
-      Insert { pat :: a, next :: Rule a }
-    | Delete { pat :: a, next :: Rule a }
-    | Subst  { pat :: a, subpat :: a, next :: Rule a }
-    | Cont   { pat :: a, next :: Rule a }
-    | Done
-    deriving (Show, Eq, Ord)
-
-instance (Hashable a, Monoid a) => Hashable (Rule a) where
-    hashWithSalt s (Insert a b) = s `hashWithSalt` hash a + hashWithSalt s b
-    hashWithSalt s (Delete a b) = s `hashWithSalt` hash a + hashWithSalt s b
-    hashWithSalt s (Subst a b c) =
-        s `hashWithSalt` hash (a `mappend` b) + hashWithSalt s c
-    hashWithSalt s (Cont a b) = s `hashWithSalt` hash a + hashWithSalt s b
-    hashWithSalt s (Done) = s `hashWithSalt` (0 :: Int)
-
-instance Monoid (Rule a) where
-    mempty = Done
-    mappend a Done = a
-    mappend Done a = a
-    mappend a b = if atend a
-        then a { next = b }
-        else a { next = next a `mappend` b }
-        where
-            atend (next -> Done) = True
-            atend _ = False
-
 instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
-    edit e = HM.foldlWithKey' runEdit mempty
+    edit e x = HM.foldlWithKey' runEdit mempty x -- `using` parTraversable rseq
         where
             runEdit acc k v
                 | matchP e k
@@ -107,7 +77,6 @@ instance Editable LDIFRecord where
                 | otherwise = dn
 
 instance Editor (Rule T.Text) where
-    type T = T.Text
     matchP r v
         | Insert p _   <- r = T.unpack v =~ T.unpack p
         | Delete p _   <- r = T.unpack v =~ T.unpack p

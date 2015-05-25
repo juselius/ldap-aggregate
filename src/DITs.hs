@@ -28,8 +28,11 @@ import Data.Function
 import Data.Time.Clock
 import Data.Time.Format
 import Control.Exception
+import Control.Concurrent
+import Control.Parallel.Strategies
+import Control.DeepSeq
 import Control.Monad
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 import Control.Monad.IO.Class
 import LDAP
 import LDIF
@@ -87,33 +90,60 @@ bindDIT DIT{..} = do
         passwd' = T.unpack passwd
 
 modifyDIT :: LDAP -> LDIFMods -> Log IO ()
-modifyDIT ldap ldif = do
-    mapM_ runMod lDel
-    mapM_ runMod lOther
+modifyDIT ldap  lm = do
+    mapM_ (runOp "del")    lDel
+    mapM_ (runOp "add")    lAdd
+    mapM_ (runOp "change") lMod
     where
-        ldif' = L.sortBy (orf `on` fst) $ HM.toList ldif
-        (L.reverse -> lDel, lOther) = L.partition (pf . snd) ldif'
-        orf a b =  T.length a `compare` T.length b
-        runMod (T.unpack -> dn, entry) = case entry of
-            LDIFAdd    _ (recordToLdapAdd -> e) -> do
-                logDbg 0 ("add: " ++ dn)
-                logDbg 1 (info e)
-                x <- liftIO . try $ ldapAdd ldap dn e
-                either (report entry) return x
-            LDIFChange _ (recordToLdapMod -> e) -> do
-                unless (null e) (logDbg 0 ("change: " ++ dn))
-                unless (null e) (logDbg 1 (info e))
-                x <- liftIO . try $ ldapModify ldap dn e
-                either (report entry) return x
-            LDIFDelete _                        -> do
-                logDbg 0 ("delete: " ++ dn)
-                x <- liftIO . try $ ldapDelete ldap dn
-                either (report entry) return x
-        pf (LDIFDelete _) = True
-        pf _ = False
+        ldif = sortLdifByLDn lm
+        lDel = toDel (L.reverse ldif)
+        lAdd = toAdd ldif
+        lMod = toMod ldif
+        runOp op (T.unpack -> dn, e) = do
+            logDbg 0 (op ++ ": " ++ dn)
+            logDbg 1 (info e)
+            return ()
+            -- x <- case op of
+            --     "add"    -> liftIO . try $ ldapAdd    ldap dn e
+            --     "change" -> liftIO . try $ ldapModify ldap dn e
+            --     _        -> liftIO . try $ ldapDelete ldap dn
+            -- either (report e) return x
         info e = unlines (map show e) ++ "--"
-        report :: LDIFMod -> LDAPException -> Log IO ()
+        report :: [LDAPMod] -> LDAPException -> Log IO ()
         report l e = logDbg 0 (show e ++ ": >>>\n" ++ show l ++ "<<<")
+
+toDel :: [(T.Text, LDIFMod)] -> [(T.Text, [LDAPMod])]
+toDel ldif = map convert $ filter isDel ldif
+    where
+        isDel (_, LDIFDelete _) = True
+        isDel _ = False
+
+toAdd :: [(T.Text, LDIFMod)] -> [(T.Text, [LDAPMod])]
+toAdd ldif = r
+    where
+        r = map convert x
+        x = filter isAdd ldif
+        isAdd (_, LDIFAdd _ _) = True
+        isAdd _ = False
+
+toMod :: [(T.Text, LDIFMod)] -> [(T.Text, [LDAPMod])]
+toMod ldif = map convert $ filter isChange ldif
+    where
+        isChange (_, LDIFChange _ _) = True
+        isChange _ = False
+
+convert :: (T.Text, LDIFMod) -> (T.Text, [LDAPMod])
+convert (dn, entry) =
+    case entry of
+        LDIFAdd    _ e -> (dn, recordToLdapAdd e)
+        LDIFChange _ e -> (dn, recordToLdapMod e)
+        LDIFDelete _   -> (dn, [])
+
+sortLdifByLDn :: LDIFMods -> [(T.Text, LDIFMod)]
+sortLdifByLDn ldif =
+    L.sortBy (lencomp `on` fst) $ HM.toList ldif
+    where
+        lencomp a b =  T.length a `compare` T.length b
 
 fetchTree :: LDAP -> [SearchBase] -> IO [LDAPEntry]
 fetchTree ldap = foldM (\a b -> fmap (a ++) (fetchSubTree ldap b)) []
@@ -139,14 +169,16 @@ getLdifRules DIT{..} = LDIFRules rw ign ins
         ins = []
 
 applyLdifRules :: LDIFRules -> LDIFEntries -> LDIFEntries
-applyLdifRules LDIFRules{..} =
-      reconcileDn
-    . runEdits insertRules
-    . runEdits rewriteRules
-    . runEdits ignoreRules
+applyLdifRules LDIFRules{..} e =
+    withStrategy (parTraversable rdeepseq) $
+          reconcileDn
+        . runEdits insertRules
+        . runEdits rewriteRules
+        . runEdits ignoreRules $ e
     where
         -- insert the rewritten dn:s into the hashmap
-        reconcileDn = HM.foldl' (\acc v -> HM.insert (rDn v) v acc) mempty
+        reconcileDn = HM.foldl' newDn mempty
+        newDn acc v = HM.insert (rDn v) v acc
 
 -- for every dn rewrite, add the corresponding rewrite to attr dn
 addAttrRewriteDn :: DIT -> DIT
@@ -181,4 +213,5 @@ getCurrentTimeStamp = tsfmt <$> getCurrentTime
         tsfmt = T.pack . formatTime defaultTimeLocale "%Y%m%d%H%M%SZ"
 
 logDbg :: Monad m => Int -> String -> WriterT [(Int, String)] m ()
-logDbg lvl msg = writer ((),[(lvl, msg)])
+logDbg lvl msg = writer logmsg
+    where logmsg = ((),[(lvl, msg)])

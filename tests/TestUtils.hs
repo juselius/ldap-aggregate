@@ -15,7 +15,7 @@ import LDAP
 import DITs
 import LDIF
 import Control.Monad
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 import qualified Data.Text as T
 
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add

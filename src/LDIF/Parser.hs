@@ -165,7 +165,8 @@ pAttrType = do
     xs <- many (noneOf " :\n")
     _ <- char ':'
     let ys = c:xs
-    return $ T.pack ys
+        t  = T.pack ys
+    t `seq` return t
 
 pAttrValSpec :: Parser (Attr, [Value])
 pAttrValSpec = do
@@ -179,7 +180,8 @@ pSafeString = do
     c <- noneOf "\n :<"
     r <- many (noneOf "\n")
     let xs = c:r
-    return $ T.pack xs
+        t  = T.pack xs
+    t `seq` return t
 
 pSafeString' :: Parser T.Text
 pSafeString' = T.pack <$> many (noneOf "\n")

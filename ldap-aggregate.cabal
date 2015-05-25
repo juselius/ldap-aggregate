@@ -43,8 +43,10 @@ library
         , hashable
         , yaml
         , text
+        , bytestring
         , vector
         , unix
+        , deepseq
         , parallel
         , transformers
     hs-source-dirs: src
@@ -75,12 +77,14 @@ executable ldap-aggregate.bin
         , hashable
         , yaml
         , text
+        , bytestring
         , vector
         , time
         , old-locale
         , unix
         , transformers
         , parallel
+        , deepseq
         , ekg
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -92,7 +96,7 @@ executable ldap-aggregate.bin
         -funbox-strict-fields
         -fmax-simplifier-iterations=10
         -threaded -rtsopts -with-rtsopts=-N
-        --eventlog
+        -eventlog
         --prof -auto-all -caf-all --fprof-auto
 
 source-repository head
@@ -140,6 +144,7 @@ test-suite tests
             , time
             , old-locale
             , parallel
+            , deepseq
 
 benchmark performance
     type:           exitcode-stdio-1.0

@@ -5,6 +5,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module LDIF.Types (
       LDAPModOp(..)
@@ -22,6 +24,8 @@ module LDIF.Types (
     , Value
 ) where
 
+import GHC.Generics (Generic)
+import Control.DeepSeq
 import LDAP.Search (LDAPEntry(..))
 import LDAP.Modify (LDAPMod(..), LDAPModOp(..))
 import Data.Hashable
@@ -49,10 +53,13 @@ instance Hashable LDAPModOp where
     hash = fromEnum
     hashWithSalt s a = s `hashWithSalt` fromEnum a
 
+instance NFData LDAPModOp where
+    rnf x = seq x ()
+
 data LDIFRecord = LDIFRecord  {
       rDn :: DN
     , rAttrs :: LDIFAttrs T.Text
-    } deriving (Eq)
+    } deriving (Eq, Generic, NFData)
 
 data LDIFMod
     = LDIFAdd {
@@ -64,7 +71,7 @@ data LDIFMod
         , modMods :: LDIFAttrs (LDAPModOp, T.Text)
         }
     | LDIFDelete { modDn :: DN }
-    deriving (Eq)
+    deriving (Eq, Generic, NFData)
 
 instance Monoid LDIFRecord where
     mempty = LDIFRecord mempty mempty

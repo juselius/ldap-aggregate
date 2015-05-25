@@ -23,10 +23,10 @@ applyMods :: [LDIFMod] -> LDIFEntries -> ApplyError LDIFEntries
 applyMods mods ldif =
     runAdd ldif >>= runDel >>= runMod
     where
-        runAdd = runOp modLdif isAdd
-        runMod = runOp modLdif isMod
-        runDel = runOp modLdif isDel
-        runOp op p l = foldM op l $ filter p mods
+        runAdd = runOp isAdd
+        runMod = runOp isMod
+        runDel = runOp isDel
+        runOp p l = foldM modLdif l (filter p mods)
 
 modLdif :: LDIFEntries -> LDIFMod -> ApplyError LDIFEntries
 modLdif ldif = \case

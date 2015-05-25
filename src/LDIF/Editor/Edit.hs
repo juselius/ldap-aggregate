@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
 module LDIF.Editor.Edit (
       Editable(..)
@@ -17,8 +16,9 @@ import Text.Regex
 import Text.Regex.TDFA
 import LDIF
 import LDIF.Editor.Rules
--- import Control.Parallel.Strategies
+import Control.DeepSeq
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
@@ -34,8 +34,9 @@ class Editor a where
     contP   :: a -> T.Text  -> Bool
     nextR   :: a -> a
 
-instance (Monoid v, Editable v) => Editable (HM.HashMap T.Text v) where
-    edit e x = HM.foldlWithKey' runEdit mempty x -- `using` parTraversable rseq
+instance (Monoid v, Editable v, NFData v) =>
+    Editable (HM.HashMap T.Text v) where
+    edit e = HM.foldlWithKey' runEdit mempty
         where
             runEdit acc k v
                 | matchP e k
@@ -78,10 +79,10 @@ instance Editable LDIFRecord where
 
 instance Editor (Rule T.Text) where
     matchP r v
-        | Insert p _   <- r = T.unpack v =~ T.unpack p
-        | Delete p _   <- r = T.unpack v =~ T.unpack p
-        | Subst  p _ _ <- r = T.unpack v =~ T.unpack p
-        | Cont   p _   <- r = T.unpack v =~ T.unpack p
+        | Insert p _   <- r = T.encodeUtf8 v =~ T.encodeUtf8 p
+        | Delete p _   <- r = T.encodeUtf8 v =~ T.encodeUtf8 p
+        | Subst  p _ _ <- r = T.encodeUtf8 v =~ T.encodeUtf8 p
+        | Cont   p _   <- r = T.encodeUtf8 v =~ T.encodeUtf8 p
         | otherwise         = False
     contP r _
         | Insert _   Done <- r = False

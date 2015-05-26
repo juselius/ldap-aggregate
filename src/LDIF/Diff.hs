@@ -8,12 +8,12 @@ module LDIF.Diff (
 
 import LDIF.Types
 import Data.Maybe
-import Control.Parallel.Strategies
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.HashSet as HS
 
 -- | Calculate Change LDIF between two LDIF contents.
 -- If there is not difference the empty change list is returned.
+-- Does not parallelize well. Needs new parallel implementation.
 diffLDIF :: LDIFEntries -> LDIFEntries -> LDIFMods
 diffLDIF l1 l2 =
     HM.unions [toAdd adds, toDelete deletes, changes]

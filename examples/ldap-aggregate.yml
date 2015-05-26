@@ -1,72 +1,62 @@
-updateInterval: 30
+updateInterval: 5
 
 target:
-    uri: ldaps://localhost:389
+    uri: ldap://localhost
     binddn: cn=admin,dc=target
     password: secret
     search:
         - basedn: ou=users,dc=target
         - basedn: ou=groups,dc=target
-        - basedn: cn=user,ou=members,dc=target
+        - basedn: cn=acme,ou=members,dc=target
     ignore:
-        - dn: ou=import,ou=users,dc=target
-        - dn: ou=import,ou=groups,dc=target
-        - dn: cn=vip,ou=members,dc=target
+        - dn: ^ou=users,dc=target$
+        - dn: ^ou=groups,dc=target$
+        - dn: ^ou=import,ou=users,dc=target$
+        - dn: ^ou=import,ou=groups,dc=target$
+        - dn: ^ou=source,ou=users,dc=target$
+        - dn: ^ou=source,ou=groups,dc=target$
+        - dn: ^cn=acme,ou=members,dc=target$
         - attr: entryUUID
-        - dn: cn=Marve Fleksnes,ou=users,dc=target
-          attr: ou
-        - dn: cn=Marve Fleksnes,ou=users,dc=target
-          attr: ou
-          value: foo
+        - dn: uid=roger,ou=users,dc=target
+        - dn: cn=roger,ou=groups,dc=target
+        #   attr: ou
+        # - dn: cn=Marve Fleksnes,ou=users,dc=target
+        #   attr: ou
+        #   value: foo
 
 sources:
-    - uri: ldaps://localhost:389
+    - uri: ldap://localhost
       binddn: cn=admin,dc=source
       password: secret
-      auditlog: ./examples/auditlog.ldif
       search:
           - basedn: ou=users,dc=source
-            filter: '*'
-          - basedn: groups,dc=source
-          - basedn: ou=user,ou=members,dc=source
+          - basedn: ou=groups,dc=source
+          - basedn: ou=vip,ou=members,dc=source
+            filter: 'member=*'
       ignore:
-          - dn: ou=users,dc=source
-          - dn: ou=groups,dc=source
-          - dn: cn=user,ou=members,dc=source
-          - attr: entryUUID
-          - dn: cn=Marve Fleksnes,ou=users,dc=target
-            attr: ou
-          - dn: ou=users,dc=source
-            attr: mail
-            value: ^foo@.*
+          - dn: ^ou=users,dc=source$
+          - dn: ^ou=groups,dc=source$
+          - dn: ^cn=user,ou=members,dc=source$
+          # - attr: entryUUID
+          # - dn: cn=Marve Fleksnes,ou=users,dc=target
+          #   attr: ou
+          # - dn: ou=users,dc=source
+          #   attr: mail
+          #   value: ^foo@.*
       rewrite:
-          - dn:
-              from: ou=users,dc=source
-              to: ou=import,ou=users,dc=target
-          - dn:
-              from: ou=groups,dc=source,
-              to: ou=import,ou=groups,dc=target
-          - dn:
-              from: cn=user,ou=members,dc=source
-              to: cn=vip,ou=members,dc=target
-          - dn: ou=users,dc=source
-            attr:
-                from: (mail)
-                to: e\\1
-          - dn: cn=Marve Fleksnes,ou=users,dc=source
-            attr: ou
-            value:
-                from: Human *Resources
-                to: Human Incompetence
-          - attr: ou
-            value:
-                from: Human
-                to: Humanoid
-          - value:
-              from: Human
-              to: Humanoid
-      insert:
-          - dn: cn=Marve Fleksnes,ou=users,dc=target
-            attr: mail
-            value: marve@fleksnes.no
+          - dn: ou=users,dc=source --> ou=source,ou=users,dc=target
+          - dn: ou=groups,dc=source --> ou=source,ou=groups,dc=target
+          # - dn: cn=user,ou=members,dc=source --> cn=vip,ou=members,dc=target
+          # - dn: ou=users,dc=source
+          #   attr: (mail) --> e\\1
+          # - dn: cn=Marve Fleksnes,ou=users,dc=source
+          #   attr: ou
+          #   value: Human *Resources --> Human Incompetence
+          # - attr: ou
+          #   value: Human --> Humanoid
+          # - value: Human --> Humanoid
+      # insert:
+      #     - dn: cn=Marve Fleksnes,ou=users,dc=target
+      #       attr: mail
+      #       value: marve@fleksnes.no
 

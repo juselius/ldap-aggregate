@@ -28,9 +28,7 @@ import Data.Function
 import Data.Time.Clock
 import Data.Time.Format
 import Control.Exception
-import Control.Concurrent
 import Control.Parallel.Strategies
-import Control.DeepSeq
 import Control.Monad
 import Control.Monad.Trans.Writer.Strict
 import Control.Monad.IO.Class
@@ -102,12 +100,11 @@ modifyDIT ldap  lm = do
         runOp op (T.unpack -> dn, e) = do
             logDbg 0 (op ++ ": " ++ dn)
             logDbg 1 (info e)
-            return ()
-            -- x <- case op of
-            --     "add"    -> liftIO . try $ ldapAdd    ldap dn e
-            --     "change" -> liftIO . try $ ldapModify ldap dn e
-            --     _        -> liftIO . try $ ldapDelete ldap dn
-            -- either (report e) return x
+            x <- case op of
+                "add"    -> liftIO . try $ ldapAdd    ldap dn e
+                "change" -> liftIO . try $ ldapModify ldap dn e
+                _        -> liftIO . try $ ldapDelete ldap dn
+            either (report e) return x
         info e = unlines (map show e) ++ "--"
         report :: [LDAPMod] -> LDAPException -> Log IO ()
         report l e = logDbg 0 (show e ++ ": >>>\n" ++ show l ++ "<<<")

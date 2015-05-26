@@ -4,6 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module LDIF.Editor.Rules (
       Rule(..)
     , IgnoreRule(..)
@@ -11,10 +13,12 @@ module LDIF.Editor.Rules (
     , InsertRule(..)
     ) where
 
+import GHC.Generics (Generic)
 import Data.Yaml
 import Data.Maybe
 import Data.Hashable
 import Control.Monad
+import Control.DeepSeq
 import qualified Data.Text as T
 
 data Rule a =
@@ -23,7 +27,7 @@ data Rule a =
     | Subst  { pat :: a, subpat :: a, next :: Rule a }
     | Cont   { pat :: a, next :: Rule a }
     | Done
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Generic, NFData)
 
 newtype IgnoreRule  = IgnoreRule  {
     doIgnore  :: Rule T.Text

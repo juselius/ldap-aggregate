@@ -4,27 +4,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns #-}
 module Main where
 
 import Paths_ldap_aggregate
 import System.Console.CmdArgs
 import System.Posix.Signals
 import Control.Concurrent
+-- import Control.Parallel.Strategies
+-- import Control.DeepSeq
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.Trans.Writer.Strict
 import Data.Version
-import Data.List
+-- import Data.List
 import Data.IORef
 import LDAP
 import LDIF
 import Config
 import DITs
-import LDIF.Editor.Edit (Rule(..))
+import LDIF.Editor.Rules (Rule(..))
 import qualified Data.Text as T
+-- import qualified Data.Text.Encoding as T
 import qualified Data.HashMap.Lazy as HM
+import qualified Data.HashSet as HS
 import qualified System.Remote.Monitoring as EKG
+-- import qualified Data.ByteString as BS
 
 data CmdLine = CmdLine {
       config :: FilePath
@@ -39,6 +43,7 @@ cmdln = CmdLine {
         &= typFile
     , debug = 0 &= typ "LEVEL" &= help "Debug level"
     }
+    &= verbosity
     &= help "Edit, filter and rewrite LDAP trees."
     &= summary ("ldap-aggregate v. "
         ++ showVersion version
@@ -80,9 +85,16 @@ main = do
     tConn   <- bindDIT tDit
     sConns  <- mapM bindDIT sDits
 
-    let world = World (updateInterval cfg) (debug a)
+    vrb <- getVerbosity
+    let vlevel = case vrb of
+            Loud   -> debug a + 1
+            Normal -> debug a
+            Quiet  -> -1
+
+    let world = World (updateInterval cfg) vlevel
             tConn tDit tRules HM.empty epoch
             sConns sDits sRules HM.empty epoch
+    aggregator world
     t <- forkIO $ aggregator world
     tid <- newIORef t
     void $ installHandler sigHUP (Catch (hupHandler tid world)) Nothing
@@ -93,9 +105,7 @@ main = do
 aggregator :: World -> IO ()
 aggregator world = do
     let updater' = updater (dbglvl world) (dt world)
-    (w, l) <- runWriterT $ updateTargetTree world >>= updateSourceTrees
-    printLog 1 l
-    updater' w >>= updateLoop updater'
+    updater' world  >>= updateLoop updater'
 
 -- | Run updates until a full sweep is initiated
 updateLoop :: (World -> IO World) -> World -> IO ()
@@ -112,12 +122,6 @@ updater lvl delay world = do
     return w { tStamp = tts
              , sStamp = sts }
 
--- | Given a verbosity level, print all log entries with a smaller level
-printLog :: Int -> [(Int, String)] -> IO ()
-printLog lvl = mapM_ prlog
-    where
-        prlog (n, s) = when (n <= lvl) $ putStrLn s
-
 -- | Update and apply rules to the source and target trees, diff and commit
 -- changes.
 runUpdates :: World -> Log IO World
@@ -132,9 +136,8 @@ runUpdates world = do
 updateTargetTree :: World -> Log IO World
 updateTargetTree w@World{..} = do
     l <- fetchLdif tConn tDit'
-    let l' = applyLdifRules (ignoreTwigs l) l -- Ignore non-leaf entries
-        t  = applyLdifRules tRules l'
-    return w { tTree   = HM.union t tTree }
+    let t = applyLdifRules tRules l
+    return w { tTree = HM.union t tTree }
     where
         tDit'  = updateTimeStamp tStamp tDit
 
@@ -142,8 +145,7 @@ updateTargetTree w@World{..} = do
 updateSourceTrees :: World -> Log IO World
 updateSourceTrees w@World{..} = do
     l <- zipWithM fetchLdif sConns sDits'
-    let l' = zipWith (applyLdifRules . ignoreTwigs) l l -- Ignore non-leaf entries
-        s = (HM.unions . zipWith applyLdifRules sRules) l'
+    let s = (HM.unions . zipWith applyLdifRules sRules) l
     return w { sTree = HM.union s sTree }
     where
         sDits' = map (updateTimeStamp sStamp) sDits
@@ -157,14 +159,14 @@ fetchLdif l DIT{..} = do
     return $ ldapToLdif tree
 
 -- | Add automatic ignore rules for all non-leaf entries
+-- This is slow, parallelizes poorly and generally not a good idea.
 ignoreTwigs :: LDIFEntries -> LDIFRules
-ignoreTwigs (HM.toList -> l) = LDIFRules [] twigR []
-        where
-            twigR = map (\s -> Delete (anchor s) Done) $ getTwigs l
-            getTwigs x = nub $ foldl' chopLeaves [] x
-            chopLeaves acc (dn, _) = twig dn : acc
-            twig dn = T.tail $ T.dropWhile (/= ',') dn
-            anchor s = "^" `T.append` s `T.append` "$"
+ignoreTwigs l = LDIFRules [] (HS.toList twigs) []
+    where
+        twigs = HM.foldlWithKey' chopLeaves HS.empty l
+        chopLeaves acc dn _ = HS.insert (twig dn `Delete` Done) acc
+        twig dn = anchor . T.tail $ T.dropWhile (/= ',') dn
+        anchor s = "^" `T.append` s `T.append` "$"
 
 -- | Sleep until next sweep, restart worker thread(s), and reschedule sweep
 scheduleSweep :: Int -> IO ()
@@ -180,6 +182,12 @@ hupHandler tid world = do
     killThread t
     newt <- forkIO $ aggregator world
     writeIORef tid newt
+
+-- | Given a verbosity level, print all log entries with a smaller level
+printLog :: Int -> [(Int, String)] -> IO ()
+printLog lvl = mapM_ prlog
+    where
+        prlog (n, s) = when (n <= lvl) $ putStrLn s
 
 -- | Computer genesis
 epoch :: T.Text

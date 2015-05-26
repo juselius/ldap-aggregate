@@ -52,7 +52,7 @@ library
     hs-source-dirs: src
     default-language: Haskell2010
     ghc-options:
-        --O2
+        -O
         -Wall
         -fwarn-tabs
         -fdicts-cheap
@@ -89,7 +89,7 @@ executable ldap-aggregate.bin
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:
-        --O2
+        -O
         -Wall
         -fwarn-tabs
         -fdicts-cheap

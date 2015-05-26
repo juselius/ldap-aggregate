@@ -16,6 +16,11 @@ changetype: add
 ou: members
 objectclass: organizationalunit
 
+dn: ou=import,dc=target
+changetype: add
+ou: import
+objectclass: organizationalunit
+
 dn: ou=source,ou=users,dc=target
 changetype: add
 ou: source

@@ -6,8 +6,8 @@ module AggregateTests (
 import Test.Tasty
 import Test.Tasty.HUnit
 import LDIF
-import Config
-import DITs
+import Aggregate.Config
+import Aggregate.DITs
 import qualified Data.Text as T
 
 aggTests :: TestTree

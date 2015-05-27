@@ -8,8 +8,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Data.List
 import LDIF.Editor
-import Config
-import DITs
+import Aggregate.Config
+import Aggregate.DITs
 
 -- import Debug.Trace
 

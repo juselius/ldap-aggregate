@@ -5,7 +5,7 @@ module Main where
 import System.Environment
 import System.IO
 import LDIF
-import DITs
+import Aggregate.DITs
 import TestUtils
 import qualified Data.Text.IO as T
 

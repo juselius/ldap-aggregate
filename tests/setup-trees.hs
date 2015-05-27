@@ -6,7 +6,7 @@ module Main where
 import System.IO
 import System.Environment
 import TestUtils
-import DITs
+import Aggregate.DITs
 import LDAP
 import LDIF
 import qualified Data.Text as T

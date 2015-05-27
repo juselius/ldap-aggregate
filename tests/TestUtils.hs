@@ -10,10 +10,10 @@ module TestUtils (
     , commitLdap
 ) where
 
-import Text.Regex.TDFA
 import LDAP
-import DITs
 import LDIF
+import Text.Regex.TDFA
+import Aggregate.DITs
 import Control.Monad
 import Control.Monad.Trans.Writer.Strict
 import qualified Data.Text as T

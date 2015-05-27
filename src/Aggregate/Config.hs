@@ -1,17 +1,15 @@
---
--- <jonas.juselius@uit.no> 2015
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiWayIf #-}
-module Config (
+
+module Aggregate.Config (
       Config(..)
     , readConfig
 ) where
 
 import Data.Yaml
 import Control.Monad
-import DITs
+import Aggregate.DITs
 
 data Config = Config {
         updateInterval :: Int

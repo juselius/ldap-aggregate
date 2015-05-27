@@ -2,7 +2,7 @@
 -- <jonas.juselius@uit.no> 2014
 --
 {-# LANGUAGE OverloadedStrings #-}
-module Auditlog (
+module Aggregate.Auditlog (
   monitorAuditlog
 ) where
 

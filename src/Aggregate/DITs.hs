@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
-module DITs (
+module Aggregate.DITs (
       bindDIT
     , modifyDIT
     , fetchTree

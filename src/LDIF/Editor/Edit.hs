@@ -1,10 +1,23 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE MultiWayIf #-}
+------------------------------------------------------------------------
+-- |
+-- Module      : LDIF.Editor.Edit
+-- Copyright   : Jonas Juselius 2015
+--
+-- The Editor type class provieds the interfaces for depth-controlled
+-- (recursion controled) matching and applicaton of arbitrary editing
+-- rules for text data.
+--
+-- The Editable class defines a generic interface for how to apply
+-- Editors onto (possibly recursive) data structures.
+--
+-- This module provides Editable instances for (textual, recursive and
+-- monoidal) HashMaps and HashSets. It also implements the Editor
+-- instance for textual Rules.
+------------------------------------------------------------------------
 module LDIF.Editor.Edit (
       Editable(..)
     , Editor(..)

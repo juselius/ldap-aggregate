@@ -1,20 +1,21 @@
-{-| The module emits data structures directly usable by the LDAP package.
-
-    This is a simplified version of Text.LDIF.Parser, originally by
-    Radoslav Dorick <radoslav.dorick@gmail.com>. It expexts valid and
-    well formed LDIF as input. It does no actual parsing and validation of
-    entries.
-
-    <jonas.juselius@uit.no> 2014
--}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE LambdaCase #-}
+------------------------------------------------------------------------
+-- |
+-- Module    : LDIF.Parser
+-- Copyright : Jonas Juselius 2014
+--
+-- The module emits data structures easily usable by the LDAP package.
+--
+-- This is a simplified version of Text.LDIF.Parser, originally by
+-- Radoslav Dorick <radoslav.dorick@gmail.com>. It expexts valid and
+-- well formed LDIF as input. It does no actual parsing and validation of
+-- entries.
+------------------------------------------------------------------------
 module LDIF.Parser (
-      parseLdifStr
-    , parseLdif
-    -- , parseLdif'
-    -- , parseLdifStr'
+      parseLdif
+    , parseLdifEither
 ) where
 
 import Prelude
@@ -36,13 +37,13 @@ parseLdif :: T.Text -> LDIF
 parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
 
 -- | Parse LDIF content
-parseLdifStr :: FilePath -> T.Text -> Either ParseError LDIF
-parseLdifStr name xs = case eldif of
+parseLdifEither :: T.Text -> Either ParseError LDIF
+parseLdifEither xs = case eldif of
     Left err -> Left $ transposePos ptab err -- get original line number
     Right ldif -> Right ldif
     where
         (input, ptab) = preproc xs
-        eldif = parse pLdif name input
+        eldif = parse pLdif [] input
 
 -- | Parsec ldif parser
 pLdif :: Parser LDIF

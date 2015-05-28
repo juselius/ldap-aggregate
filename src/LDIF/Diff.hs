@@ -1,7 +1,12 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
+------------------------------------------------------------------------
+-- |
+-- Module     : LDIF.Diff
+-- Copyright  : Jonas Juselius 2014
+--
+-- Compute the difference between two sets of (entry) LDIF, and produce
+-- modification LDIF easily used by ldapModify from the LDAP package.
+------------------------------------------------------------------------
 module LDIF.Diff (
       diffLDIF
 ) where

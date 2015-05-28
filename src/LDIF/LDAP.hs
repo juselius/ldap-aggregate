@@ -1,11 +1,16 @@
-{-| Helpers for working with LDAP
-
-    <jonas.juselius@uit.no> 2014
--}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
+-------------------------------------------------------------------------------
+-- |
+-- Module      :  LDIF.LDAP
+-- Copyright   :  (c) Jonas Juselius 2015
+--
+-- Helpers for working with the LDAP server module and LDAP data.
+--
+-- Convert LDIF data to server LDAP data and back.
+-------------------------------------------------------------------------------
 module LDIF.LDAP (
       ldapToLdif
     , ldifToMod

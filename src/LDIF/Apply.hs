@@ -1,8 +1,14 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+------------------------------------------------------------------------
+-- |
+-- Module    : LDIF.Apply
+-- Copyright : Jonas Juselius 2014
+--
+-- Apply modification LDIF (LDIFMod) data to LDIF entries to produce new,
+-- updated LDIF entries. In essence, this module implements the core
+-- ldapModify behavior, without a server.
+------------------------------------------------------------------------
 module LDIF.Apply (applyLdif) where
 
 import LDIF.Types

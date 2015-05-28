@@ -1,11 +1,20 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+------------------------------------------------------------------------
+-- |
+-- Module      : LDIF.Editor.Edit
+-- Copyright   : Jonas Juselius 2015
+--
+-- Rules supporting insertions, deletions and rewrites with
+-- recursion depth control, i.e. how many levels deep to recurse into
+-- recursively defined data structures.
+
+-- The modules also impements YAML/JSON parsers for reading Rules from
+-- text data.
+------------------------------------------------------------------------
 module LDIF.Editor.Rules (
       Rule(..)
     , IgnoreRule(..)

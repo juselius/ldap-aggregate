@@ -1,6 +1,3 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -8,6 +5,25 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+------------------------------------------------------------------------
+-- |
+-- Module    : LDIF.Types
+-- Copyright : Jonas Juselius 2014
+--
+-- The LDIF top-level type is a wrapper around two types:
+--
+-- * LDIFEntry represents LDIF search data, as returned from LDAP/AD
+-- * LDIFMod represents LDIF change and modification operations
+--
+-- The LDIF wrapper is needed, since the Parser module can parse
+-- entry and modification LDIF, or a mixture of both.
+--
+-- This module also implements explicit Show instances for the types
+-- for representing the data types as textual LDIF. Internally data
+-- is represented using unordered hashmaps (dictionaries) and sets,
+-- for efficient lookup, difference operations and to ensure that
+-- there are no duplicate entries.
+------------------------------------------------------------------------
 module LDIF.Types (
       LDAPModOp(..)
     , LDAPEntry(..)

@@ -5,10 +5,14 @@ name:                ldap-aggregate
 version:             0.1.0.0
 synopsis:            LDAP aggreagator with entry filtering and rewrite
 description:
-    LDAP aggregate
+    ldap-aggregate gathers records from multiple LDAP sources into a target
+    tree. The source records are filtered and rewritten using a regular expression
+    based configuration format. At startup ldap-aggreagte does a full initial
+    sweep of the source and target trees, and then enters a polling loop
+    requesting only changed records at regular intervals.
     .
-    Aggregate, filter and rewrite LDIF from one or more source DITs to a
-    target DIT.
+    ldap-aggreagte is configured using a YML based configuration file. There
+    are example configurations in the examples/ directory.
 homepage:            https://source.uit.no/hpc/ldap-aggregate
 license:             GPL-3
 license-file:        LICENSE

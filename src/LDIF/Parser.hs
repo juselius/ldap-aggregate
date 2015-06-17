@@ -34,7 +34,7 @@ import qualified Data.HashSet as HS
 data Ldif = LdifRec (DN, LDIFRecord) | LdifMod (DN, LDIFMod)
 
 parseLdif :: T.Text -> LDIF
-parseLdif ldif = either (error . show) id (parseLdifStr [] ldif)
+parseLdif ldif = either (error . show) id (parseLdifEither ldif)
 
 -- | Parse LDIF content
 parseLdifEither :: T.Text -> Either ParseError LDIF

@@ -1,7 +1,11 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
+------------------------------------------------------------------------
+-- |
+-- Module    : Aggregate.Auditlog
+-- Copyright : Jonas Juselius 2014
+--
+-- Read and parse an LDAP auditlog stream in LDIF format.
+------------------------------------------------------------------------
 module Aggregate.Auditlog (
   monitorAuditlog
 ) where
@@ -46,7 +50,7 @@ monitorAuditlog :: LDAP -> Handle ->  IO ()
 monitorAuditlog ldap inh = forever $ do
     ldata <- readAuditlogBlock inh []
     putStrLn $ replicate 50 '-'
-    case parseLdifStr [] (snd ldata) of
+    case parseLdif (snd ldata) of
         Left err -> print err
         Right ldif -> do
             print ldif

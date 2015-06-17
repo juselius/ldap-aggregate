@@ -1,8 +1,20 @@
---
--- <jonas.juselius@uit.no> 2014
---
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  ldap-aggregator
+-- Copyright   :  (c) Jonas Juselius 2015
+-- License     :  BSD3
+--
+-- Maintainer  :  Jonas Juselius <jonas.juselius@gmail.com>
+-- Portability :  non-portable
+--
+-- * To be written.
+--
+-- @
+-- let bottom = bottom in bottom
+-- @
+--------------------------------------------------------------------------------
 module Main where
 
 import Aggregate

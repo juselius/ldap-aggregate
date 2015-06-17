@@ -21,7 +21,7 @@ import qualified Data.Text as T
 -- | Convert a LDIF string of LDAP search results to LDAPMod for add
 ldifStrToLdapAdd :: T.Text -> LDIF
 ldifStrToLdapAdd str =
-    either (error . show) id $ parseLdifStr "" str
+    either (error . show) id $ parseLdif str
 
 clearTree' :: T.Text -> IO ()
 clearTree' tree = do

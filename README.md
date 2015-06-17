@@ -1,18 +1,30 @@
-# LDAP Aggregate
+# ldap-aggregate
 
-ldap-aggregate is a tool to transfer select updates in one LDAP tree to new
-locations in another tree, including rewriting of attributes.
+``ldap-aggregate`` gathers records from multiple LDAP sources into a target
+tree. The source records are filtered and rewritten using a regular expression
+based configuration format. At startup ``ldap-aggreagte`` does a full initial
+sweep of the source and target trees, and then enters a polling loop
+requesting only changed records at regular intervals.
+
+``ldap-aggreagte`` is configured using a YML based configuration file. There
+are example configurations in the ``examples/`` directory.
 
 ## Install
 
-ldap-aggregate is written in Haskell, and requires the Haskell Platform
-(http://haskell.org/platform) to be installed on the system. ldap-aggregate is
-configured and built using cabal:
+``ldap-aggregate`` is written in Haskell, and requires a recent version of the
+Glasgow Haskell Compiler (``> ghc-7.10.0``) and Cabal (``> cabal-1.22.0``) to
+be installed on the system. To install ``ghc`` and ``cabal``, follow the
+instructions at [Stackage](http://www.stackage.org/install). The repository
+has been configured to automatically use Stackage package repository in order
+to avoid dependency problems.
 
-    $ git clone git@source.uit.no/hpc/ldap-aggregate
+To build and install ``ldap-aggreagte``:
+
+    $ git clone git@github.com/juselius/ldap-aggregate
     $ cd ldap-aggregate
-    ($ cabal update)
+    $ cabal update
     $ cabal confiure --prefix=/opt
+    $ cabal install --only-dependencies
     $ cabal build
     $ cabal test
     $ cabal install
